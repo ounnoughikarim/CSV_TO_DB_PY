@@ -26,3 +26,7 @@ Run the main script
 poetry run python csv_to_db_py/main.py
 ```
 
+you can run it without poetry by installing all dependances with pip then run :
+```
+python ./csv_to_db_py/main.py
+```
