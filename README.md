@@ -1,6 +1,6 @@
 # Project 
 
-Convert CSV file or folder of CSV to DB with table filled with the CSV data
+Convert CSV file or folder of CSV to DB with table filled with the CSV data. For now, you can only do it for PostGres databases. 
 
 # Prerequisites
 
