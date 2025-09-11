@@ -8,16 +8,21 @@ Convert CSV file or folder of CSV to DB with table filled with the CSV data
 - Download Poetry (https://python-poetry.org/docs/#installing-with-the-official-installer)
 - Download git bash
 ## Installation
-```
-git clone
-```
 
+Clone the project 
+```
+git clone https://github.com/ounnoughikarim/CSV_TO_DB_PY.git
+```
+Install dependecies with poetry
 
 ```
 poetry install
 ```
+Create a mainConfig.json file and provide the required information. You can use the mainConfig.json.template file as a reference to know what needs to be filled in.
 
 
+Run the main script
 ```
 poetry run python csv_to_db_py/main.py
 ```
+
