@@ -1,0 +1,15 @@
+{
+    "DATABASE_CONFIG" :{
+        "type": "postgres", 
+        "host": "hostname",
+        "port": 5432,
+        "user": "postgres",
+        "password": "abcd",
+        "database": "test"
+    },
+
+    "file_path" :'C:\\Users\\myfolder',
+    "table":'notification_sap',
+    "delimiter":';'
+
+}

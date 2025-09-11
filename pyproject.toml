@@ -1,0 +1,31 @@
+[project]
+name = "csv-to-db-py"
+version = "0.1.0"
+description = "Convert CSV file or folder of CSV to DB with table filled with the CSV data"
+readme = "README.md"
+authors = [
+    {name = "Karim Ounnoughi"},
+    {name = "Claude Fauconnet"},
+    {name = "Juste Bonzene"}
+
+]
+packages = [
+    { include = "csv_to_db_py" }
+]
+license = {text = "MIT"}
+requires-python = ">=3.13"
+dependencies = [
+    "requests (>=2.32.5,<3.0.0)",
+    "pandas (>=2.3.2,<3.0.0)",
+    "numpy (>=2.3.3,<3.0.0)",
+    "datetime (>=5.5,<6.0)",
+    "psycopg2 (>=2.9.10,<3.0.0)",
+    "logging (>=0.4.9.6,<0.5.0.0)",
+    "sqlalchemy (>=2.0.43,<3.0.0)",
+    "openpyxl (>=3.1.5,<4.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
