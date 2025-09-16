@@ -1,2 +1,1 @@
-# csv_to_db_py/__init__.py
-from .main import main
+from .main import main as main
