@@ -1,8 +1,7 @@
-import os
 import pandas as pd
-from datetime import datetime
 import psycopg2
-from csv_to_db_py.config import config
+
+
 def pandas_type_to_sql(dtype):
     if dtype.name.startswith("int"):
         return "INTEGER"
@@ -14,32 +13,31 @@ def pandas_type_to_sql(dtype):
         return "TIMESTAMP"
     return "TEXT"
 
+
 def map_pandas_dtype_to_postgresql(series):
     if pd.api.types.is_integer_dtype(series):
-        return 'INTEGER'
+        return "INTEGER"
     elif pd.api.types.is_float_dtype(series):
         if series.dropna().apply(lambda x: x.is_integer()).all():
-            return 'INTEGER'
+            return "INTEGER"
         else:
-            
-            return 'FLOAT'
+            return "FLOAT"
     elif pd.api.types.is_bool_dtype(series):
-        return 'BOOLEAN'
+        return "BOOLEAN"
     elif pd.api.types.is_datetime64_any_dtype(series):
-        return 'TIMESTAMP'
+        return "TIMESTAMP"
     elif pd.api.types.is_object_dtype(series):
-        return 'VARCHAR'
+        return "VARCHAR"
     else:
-        return 'VARCHAR'
+        return "VARCHAR"
+
 
 def postgrestype_dict(dataframe):
-    
     # Lecture des noms de colonnes à partir du fichier
     column_types = {}
 
-    
     for column_name in dataframe.columns:
-        if not dataframe[column_name].dtype :
+        if not dataframe[column_name].dtype:
             print(dataframe[column_name])
         column_dtype = dataframe[column_name].dtype
         if pd.api.types.is_object_dtype(column_dtype):
@@ -48,15 +46,20 @@ def postgrestype_dict(dataframe):
                 column_dtype = dataframe[column_name].dtype
             except (ValueError, TypeError):
                 pass
-        
-        column_types[column_name] = map_pandas_dtype_to_postgresql(dataframe[column_name])
+
+        column_types[column_name] = map_pandas_dtype_to_postgresql(
+            dataframe[column_name]
+        )
     return column_types
 
 
 def overwrite_table_with_csv_data(engine, csv_data, table_name):
-    
     try:
-        csv_data.to_sql(name=table_name, con=engine, if_exists='replace', index=False)
-        print(f"La table '{table_name}' a été écrasée avec les données du fichier CSV correspondant.")
+        csv_data.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
+        print(
+            f"La table '{table_name}' a été écrasée avec les données du fichier CSV correspondant."
+        )
     except psycopg2.Error as e:
-        print(f"Erreur lors de l'écriture des données dans la table '{table_name}': {e}")
+        print(
+            f"Erreur lors de l'écriture des données dans la table '{table_name}': {e}"
+        )

@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from db_connectors.base import BaseDBConnector
 
+
 class OracleConnector(BaseDBConnector):
     def connect(self):
         cfg = self.config

@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ruff-format:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.13-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: install ruff
+        run: pip install ruff
+      - name: lint
+        run: ruff format --check
+
+  ruff-check:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.13-slim
+    steps:
+      - uses: actions/checkout@v4
+      - name: install ruff
+        run: pip install ruff
+      - name: lint
+        run: ruff check
