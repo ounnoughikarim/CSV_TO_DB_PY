@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-class BaseDBConnector(ABC):
 
+class BaseDBConnector(ABC):
     def __init__(self, config):
         self.config = config
         self.engine = None
