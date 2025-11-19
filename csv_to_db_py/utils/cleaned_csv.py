@@ -4,6 +4,16 @@ import re
 from csv_to_db_py.config import config
 from csv_to_db_py.config import PG_RESERVED
 
+import csv
+
+def detect_delimiter(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        sample = f.read(2048)
+        try:
+            delimiter = csv.Sniffer().sniff(sample).delimiter
+        except Exception:
+            delimiter = ";"    # fallback si détection impossible : tu peux mettre "," si tu préfères
+    return delimiter
 
 def normalize_column(name: str) -> str:
     name = name.strip().lower()  # lowercase + trim
@@ -14,21 +24,15 @@ def normalize_column(name: str) -> str:
 
 
 def get_dataframe_cleaned(file_path):
-    # Lecture des noms de colonnes à partir du fichier
+    delimiter = detect_delimiter(file_path)        # NOUVELLE ligne
+    print(f"Délimiteur détecté pour {file_path}: '{delimiter}'")
     csv_file = pd.read_csv(
-        file_path, delimiter=config["delimiter"], encoding="utf-8", low_memory=False
+        file_path, delimiter=delimiter, encoding="utf-8", low_memory=False
     )
-    # csv_file=pd.read_csv(file_path,delimiter=',', encoding='utf-8')
-    # csv_file=pd.read_csv(file_path,delimiter='\t', encoding='utf-8')
-    # csv_file=pd.read_csv(file_path)
     csv_file.columns = csv_file.columns.str.replace(" ", "")
     csv_file.columns = csv_file.columns.str.replace(".", "")
     csv_file.columns = csv_file.columns.str.replace("/", "")
-
-    # csv_file.columns = [normalize_column(col) for col in csv_file.columns]
-
     csv_file.columns = normalize_and_dedup_columns(csv_file.columns)
-
     print(csv_file)
     return csv_file
 

@@ -8,7 +8,7 @@
         "database": "test"
     },
 
-    "file_path" :'C:\\Users\\myfolder',
+    "csv_dir" :'C:\\Users\\myfolder or mycsv.csv',
     "table":'test',
     "delimiter":';'
 
