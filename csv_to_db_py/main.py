@@ -4,12 +4,9 @@ from utils.table_creator import create_table_from_csv
 from db_connectors import postgres, mysql, mssql, oracle
 from utils.csv_loader import postgrestype_dict, overwrite_table_with_csv_data
 from utils.cleaned_csv import get_dataframe_cleaned
+from logger import set_logger
 
-
-import logging
-
-
-logging.basicConfig(level=logging.INFO)
+import argparse
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +29,18 @@ def get_connector(config):
 
 
 def main() -> None:
-    print(config["DATABASE_CONFIG"])
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-l",
+        "--log-level",
+        choices=["error", "warning", "info", "debug"],
+        default="info",
+    )
+    args = parser.parse_args()
+    logger = set_logger(args.log_level)
+
+    logger.debug(f"DATABASE_CONFIG: {config['DATABASE_CONFIG']}")
+
     # Connexion DB
     connector = get_connector(config["DATABASE_CONFIG"])
     connector.connect()
@@ -40,12 +48,12 @@ def main() -> None:
 
     df = get_dataframe_cleaned(config["file_path"])
 
-    print(df.columns)
+    logger.debug(df.columns)
 
     types_dict = postgrestype_dict(df)
-    print(types_dict)
+    logger.debug(types_dict)
     create_table_from_csv(engine, df, config["table"], types_dict)
-    print("done")
+    logger.info("done")
     df.dropna(how="all", inplace=True)
     # desactivate_constraint(i,conn)
     # delete_table_content(i,conn)

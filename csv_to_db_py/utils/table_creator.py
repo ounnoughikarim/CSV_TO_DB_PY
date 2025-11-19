@@ -1,5 +1,4 @@
-import logging
-# ... autres imports ...
+from logger import logger
 
 
 def create_table_from_csv(engine, dataframe, table, types_dict):
@@ -11,13 +10,13 @@ def create_table_from_csv(engine, dataframe, table, types_dict):
         with engine.begin() as conn:
             conn.execute(query)
 
-        logging.info(f"Table '{table}' crée")
+        logger.info(f"Table '{table}' crée")
 
     except Exception as e:
-        print(f"Erreur lors du traitement de '{table}' : {e}")
+        logger.error(f"Erreur lors du traitement de '{table}' : {e}")
 
     columns = dataframe.columns
 
-    print(columns)
+    logger.debug(columns)
 
-    print(query)
+    logger.debug(query)

@@ -1,5 +1,6 @@
 import pandas as pd
 import psycopg2
+from logger import logger
 
 
 def pandas_type_to_sql(dtype):
@@ -38,7 +39,7 @@ def postgrestype_dict(dataframe):
 
     for column_name in dataframe.columns:
         if not dataframe[column_name].dtype:
-            print(dataframe[column_name])
+            logger.debug(dataframe[column_name])
         column_dtype = dataframe[column_name].dtype
         if pd.api.types.is_object_dtype(column_dtype):
             try:
@@ -56,10 +57,10 @@ def postgrestype_dict(dataframe):
 def overwrite_table_with_csv_data(engine, csv_data, table_name):
     try:
         csv_data.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
-        print(
+        logger.warning(
             f"La table '{table_name}' a été écrasée avec les données du fichier CSV correspondant."
         )
     except psycopg2.Error as e:
-        print(
+        logger.error(
             f"Erreur lors de l'écriture des données dans la table '{table_name}': {e}"
         )
