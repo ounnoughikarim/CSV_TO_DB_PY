@@ -1,9 +1,11 @@
 from csv_to_db_py.config import config
 
-from utils.table_creator import create_table_from_csv
+from csv_to_db_py.utils.table_creator import create_table_from_csv
 from db_connectors import postgres, mysql, mssql, oracle
-from utils.csv_loader import postgrestype_dict, overwrite_table_with_csv_data
+from csv_to_db_py.utils.csv_loader import postgrestype_dict, overwrite_table_with_csv_data
 from utils.cleaned_csv import get_dataframe_cleaned
+
+from utils.cleaned_csv import normalize_column  # ajoute cet import en haut
 
 import sys
 import os
@@ -53,6 +55,25 @@ def main(input_path=None) -> None:
     for file_path in files:
         print(f"Traitement du fichier : {file_path}")
         df = get_dataframe_cleaned(file_path)
+
+        # Appliquer le filtre sur la colonne pour la valeur souhaitée
+        
+        filter_config = config.get("FILTER", {})
+        filter_col = filter_config.get("column")
+        filter_val = filter_config.get("value")
+
+
+        if filter_col and filter_val:
+            normalized_col = normalize_column(filter_col)
+            if normalized_col in df.columns:
+                df = df[df[normalized_col] == filter_val]
+                logging.info(f"Filtre appliqué : {filter_col} = {filter_val} ({len(df)} lignes restantes)")
+            else:
+                logging.warning(f"Filtre ignoré : colonne '{filter_col}' absente après normalisation.")
+
+
+
+
         print(df.columns)
         types_dict = postgrestype_dict(df)
         print(types_dict)

@@ -7,7 +7,7 @@ from csv_to_db_py.config import PG_RESERVED
 import csv
 
 def detect_delimiter(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         sample = f.read(2048)
         try:
             delimiter = csv.Sniffer().sniff(sample).delimiter
@@ -24,15 +24,26 @@ def normalize_column(name: str) -> str:
 
 
 def get_dataframe_cleaned(file_path):
-    delimiter = detect_delimiter(file_path)        # NOUVELLE ligne
-    print(f"Délimiteur détecté pour {file_path}: '{delimiter}'")
-    csv_file = pd.read_csv(
-        file_path, delimiter=delimiter, encoding="utf-8", low_memory=False
-    )
+
+    # Utiliser le délimiteur du config si dispo, sinon détecter
+    delimiter = config.get("delimiter", detect_delimiter(file_path))
+    print(f"Délimiteur utilisé pour {file_path}: '{delimiter}'")
+
+    # Essayer UTF-8, sinon fallback Latin-1
+    try:
+        csv_file = pd.read_csv(file_path, delimiter=delimiter, encoding="utf-8", low_memory=False)
+    except UnicodeDecodeError:
+        print("[ENCODING] UTF-8 échoué, tentative avec Latin-1...")
+        csv_file = pd.read_csv(file_path, delimiter=delimiter, encoding="latin1", low_memory=False)
+
+
+    # Nettoyage des noms de colonnes
     csv_file.columns = csv_file.columns.str.replace(" ", "")
     csv_file.columns = csv_file.columns.str.replace(".", "")
     csv_file.columns = csv_file.columns.str.replace("/", "")
     csv_file.columns = normalize_and_dedup_columns(csv_file.columns)
+
+
     print(csv_file)
     return csv_file
 
