@@ -30,3 +30,10 @@ you can run it without poetry by installing all dependances with pip then run :
 ```
 python ./csv_to_db_py/main.py
 ```
+
+Change the logging level with the `--log-level` (or `-l`) option:
+
+```
+poetry run python csv_to_db_py/main.py --log-level info
+```
+
