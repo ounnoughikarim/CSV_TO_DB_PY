@@ -3,7 +3,7 @@ import pandas as pd
 import re
 from csv_to_db_py.config import config
 from csv_to_db_py.config import PG_RESERVED
-from logger import logger
+
 import csv
 
 def detect_delimiter(file_path):
@@ -42,6 +42,7 @@ def get_dataframe_cleaned(file_path):
     csv_file.columns = csv_file.columns.str.replace(".", "")
     csv_file.columns = csv_file.columns.str.replace("/", "")
     csv_file.columns = normalize_and_dedup_columns(csv_file.columns)
+
 
     print(csv_file)
     return csv_file
