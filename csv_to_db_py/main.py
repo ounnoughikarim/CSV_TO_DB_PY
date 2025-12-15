@@ -3,10 +3,9 @@ from csv_to_db_py.config import config
 from csv_to_db_py.utils.table_creator import create_table_from_csv
 from db_connectors import postgres, mysql, mssql, oracle
 from csv_to_db_py.utils.csv_loader import postgrestype_dict, overwrite_table_with_csv_data
-from utils.cleaned_csv import get_dataframe_cleaned
+from utils.cleaned_csv import get_dataframe_cleaned_new
 from logger import set_logger
 
-<<<<<<< HEAD
 from utils.cleaned_csv import normalize_column  # ajoute cet import en haut
 
 import sys
@@ -15,9 +14,7 @@ import logging
 
 
 logging.basicConfig(level=logging.INFO)
-=======
 import argparse
->>>>>>> b92ab8c76bc9030115ec9ae001b21012837869be
 
 
 # ---------------------------------------------------------------------------
@@ -39,45 +36,33 @@ def get_connector(config):
         raise ValueError("Base de données non supportée")
 
 
-<<<<<<< HEAD
 def main(input_path=None) -> None:
     if input_path is None:
-        input_path = config["csv_dir"]
+        input_path = config["files_dir"]
 
-=======
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-l",
-        "--log-level",
-        choices=["error", "warning", "info", "debug"],
-        default="info",
-    )
-    args = parser.parse_args()
-    logger = set_logger(args.log_level)
-
-    logger.debug(f"DATABASE_CONFIG: {config['DATABASE_CONFIG']}")
-
-    # Connexion DB
->>>>>>> b92ab8c76bc9030115ec9ae001b21012837869be
     connector = get_connector(config["DATABASE_CONFIG"])
     connector.connect()
     engine = connector.get_engine()
 
-    # Détection du(s) fichier(s)
-    if os.path.isfile(input_path) and input_path.endswith('.csv'):
+    # Détection du(s) fichier(s) CSV ou XLSX
+    if os.path.isfile(input_path) and (input_path.endswith('.csv') or input_path.endswith('.xlsx')):
         files = [input_path]
-    elif os.path.isdir(input_path):
-        files = [os.path.join(input_path, f) for f in os.listdir(input_path) if f.endswith('.csv')]
-    else:
-        raise ValueError("Le chemin fourni n'est ni un fichier CSV existant ni un dossier valide")
 
-<<<<<<< HEAD
+    elif os.path.isdir(input_path):
+        files = [
+            os.path.join(input_path, f)
+            for f in os.listdir(input_path)
+            if f.endswith('.csv') or f.endswith('.xlsx')
+        ]
+
+    else:
+        raise ValueError("Le chemin fourni n'est ni un fichier CSV/XLSX existant ni un dossier valide")
+    
     print(f"Fichiers trouvés : {files}")
 
     for file_path in files:
         print(f"Traitement du fichier : {file_path}")
-        df = get_dataframe_cleaned(file_path)
+        df = get_dataframe_cleaned_new(file_path)
 
         # Appliquer le filtre sur la colonne pour la valeur souhaitée
         
@@ -107,18 +92,6 @@ def main() -> None:
         df.dropna(how="all", inplace=True)
         overwrite_table_with_csv_data(engine, df, table_name)
         print(f"Données du fichier {file_path} chargées dans la table {table_name}")
-=======
-    logger.debug(df.columns)
-
-    types_dict = postgrestype_dict(df)
-    logger.debug(types_dict)
-    create_table_from_csv(engine, df, config["table"], types_dict)
-    logger.info("done")
-    df.dropna(how="all", inplace=True)
-    # desactivate_constraint(i,conn)
-    # delete_table_content(i,conn)
-    overwrite_table_with_csv_data(engine, df, config["table"])
->>>>>>> b92ab8c76bc9030115ec9ae001b21012837869be
 
 
 if __name__ == "__main__":
