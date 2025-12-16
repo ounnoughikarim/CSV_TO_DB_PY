@@ -6,10 +6,10 @@
         "user": "postgres",
         "password": "abcd",
         "database": "test"
-    },
+    }, // database access
 
-    "files_dir" :'C:\\Users\\myfolder or mycsv.csv or myxlsx.xlsx',
-    "table":'test',
-    "delimiter":';'
+    "files_dir" :'C:\\Users\\path', // it can be a file or a folder path with multiple files
+    "table":'test', // table used uniquely for one file path, it will create a table with this name otherwise it will create a table with the file name
+    "delimiter":';' // delimiter used
 
 }

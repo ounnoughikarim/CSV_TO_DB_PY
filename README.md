@@ -1,39 +1,63 @@
-# Project 
+# CSV to DB
 
-Convert CSV file or folder of CSV to DB with table filled with the CSV data. For now, you can only do it for PostGres databases. 
+Convert table files or folders to PostgreSQL database tables.The database need to already exists.
 
-# Prerequisites
+## Prerequisites
 
-- Download Python 
-- Download Poetry (https://python-poetry.org/docs/#installing-with-the-official-installer)
-- Download git bash
+- Python 3.13+
+- UV (https://docs.astral.sh/uv/getting-started/installation/)
+- PostgreSQL database
+- files with CSV or XLSX format
+
+
+
 ## Installation
 
-Clone the project 
-```
+```bash
 git clone https://github.com/ounnoughikarim/CSV_TO_DB_PY.git
-```
-Install dependecies with poetry
-
-```
-poetry install
-```
-Create a mainConfig.json file and provide the required information. You can use the mainConfig.json.template file as a reference to know what needs to be filled in.
-
-
-Run the main script
-```
-poetry run python csv_to_db_py/main.py
+cd CSV_TO_DB_PY
+uv sync
 ```
 
-you can run it without poetry by installing all dependances with pip then run :
-```
-python ./csv_to_db_py/main.py
+## Configuration
+
+Create `mainConfig.json` from the template:
+
+```json
+{
+    "DATABASE_CONFIG": {
+        "type": "postgres",
+        "host": "hostname",
+        "port": 5432,
+        "user": "postgres",
+        "password": "your_password",
+        "database": "your_database"
+    },
+    "files_dir": "C:\\path\\to\\your\\file",
+    "table": "table_name",
+    "delimiter": ";"
+}
 ```
 
-Change the logging level with the `--log-level` (or `-l`) option:
+- `files_dir`: Path to a  file or folder containing multiple files
+- `table`: Table name (optional - uses filename if not specified)
+- `delimiter`: CSV delimiter character if the format is CSV
 
-```
-poetry run python csv_to_db_py/main.py --log-level info
+## Usage
+
+```bash
+uv run python csv_to_db_py/main.py
 ```
 
+With custom log level:
+```bash
+uv run python csv_to_db_py/main.py --log-level info
+```
+
+## Development
+
+Check code before committing:
+```bash
+uv run ruff check . --fix
+uv run ruff check .
+```
