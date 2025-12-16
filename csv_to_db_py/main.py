@@ -90,8 +90,11 @@ def main(input_path=None) -> None:
         print(df.columns)
         types_dict = postgrestype_dict(df)
         print(types_dict)
-
-        table_name = f"{config.get('TABLE_PREFIX', '')}{os.path.splitext(os.path.basename(file_path))[0]}"
+        
+        if not isUniqueFile:
+            table_name = config['table']
+        else:
+            table_name = os.path.splitext(os.path.basename(file_path))[0]
         create_table_from_csv(engine, df, table_name, types_dict)
         print(f"Table {table_name} créée")
         # Drop rows where all values are null (polars equivalent)
