@@ -1,33 +1,39 @@
-import pandas as pd
+import polars as pl
 import psycopg2
 from logger import logger
 
 
-def pandas_type_to_sql(dtype):
-    if dtype.name.startswith("int"):
+def polars_type_to_sql(dtype):
+    dtype_str = str(dtype)
+    if "Int" in dtype_str:
         return "INTEGER"
-    if dtype.name.startswith("float"):
+    if "Float" in dtype_str:
         return "FLOAT"
-    if dtype.name.startswith("bool"):
+    if "Boolean" in dtype_str or "Bool" in dtype_str:
         return "BOOLEAN"
-    if "datetime" in dtype.name:
+    if "Datetime" in dtype_str or "Date" in dtype_str:
         return "TIMESTAMP"
     return "TEXT"
 
 
-def map_pandas_dtype_to_postgresql(series):
-    if pd.api.types.is_integer_dtype(series):
+def map_polars_dtype_to_postgresql(series):
+    dtype = series.dtype
+    dtype_str = str(dtype)
+
+    if "Int" in dtype_str:
         return "INTEGER"
-    elif pd.api.types.is_float_dtype(series):
-        if series.dropna().apply(lambda x: x.is_integer()).all():
+    elif "Float" in dtype_str:
+        # Check if all non-null values are integers
+        non_null = series.drop_nulls()
+        if len(non_null) > 0 and (non_null == non_null.cast(pl.Int64)).all():
             return "INTEGER"
         else:
             return "FLOAT"
-    elif pd.api.types.is_bool_dtype(series):
+    elif "Boolean" in dtype_str or "Bool" in dtype_str:
         return "BOOLEAN"
-    elif pd.api.types.is_datetime64_any_dtype(series):
+    elif "Datetime" in dtype_str or "Date" in dtype_str:
         return "TIMESTAMP"
-    elif pd.api.types.is_object_dtype(series):
+    elif "Utf8" in dtype_str or "String" in dtype_str:
         return "VARCHAR"
     else:
         return "VARCHAR"
@@ -38,17 +44,19 @@ def postgrestype_dict(dataframe):
     column_types = {}
 
     for column_name in dataframe.columns:
-        if not dataframe[column_name].dtype:
-            logger.debug(dataframe[column_name])
-        column_dtype = dataframe[column_name].dtype
-        if pd.api.types.is_object_dtype(column_dtype):
+        column = dataframe[column_name]
+        dtype_str = str(column.dtype)
+
+        # Try to parse as datetime if it's a string column
+        if "Utf8" in dtype_str or "String" in dtype_str:
             try:
-                dataframe[column_name] = pd.to_datetime(dataframe[column_name])
-                column_dtype = dataframe[column_name].dtype
-            except (ValueError, TypeError):
+                dataframe = dataframe.with_columns(
+                    pl.col(column_name).str.strptime(pl.Datetime, format="%Y-%m-%d %H:%M:%S", strict=False)
+                )
+            except:
                 pass
 
-        column_types[column_name] = map_pandas_dtype_to_postgresql(
+        column_types[column_name] = map_polars_dtype_to_postgresql(
             dataframe[column_name]
         )
     return column_types
@@ -56,7 +64,9 @@ def postgrestype_dict(dataframe):
 
 def overwrite_table_with_csv_data(engine, csv_data, table_name):
     try:
-        csv_data.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
+        # Convert polars DataFrame to pandas for SQLAlchemy compatibility
+        pandas_data = csv_data.to_pandas()
+        pandas_data.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
         logger.warning(
             f"La table '{table_name}' a été écrasée avec les données du fichier CSV correspondant."
         )

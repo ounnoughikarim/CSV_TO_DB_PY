@@ -2,19 +2,20 @@ from csv_to_db_py.config import config
 
 from csv_to_db_py.utils.table_creator import create_table_from_csv
 from db_connectors import postgres, mysql, mssql, oracle
-from csv_to_db_py.utils.csv_loader import postgrestype_dict, overwrite_table_with_csv_data
+from csv_to_db_py.utils.csv_loader import (
+    postgrestype_dict,
+    overwrite_table_with_csv_data,
+)
 from utils.cleaned_csv import get_dataframe_cleaned_new
-from logger import set_logger
+from utils.cleaned_csv import normalize_column
 
-from utils.cleaned_csv import normalize_column  # ajoute cet import en haut
-
+import polars as pl
 import sys
 import os
 import logging
 
 
 logging.basicConfig(level=logging.INFO)
-import argparse
 
 
 # ---------------------------------------------------------------------------
@@ -45,42 +46,46 @@ def main(input_path=None) -> None:
     engine = connector.get_engine()
 
     # Détection du(s) fichier(s) CSV ou XLSX
-    if os.path.isfile(input_path) and (input_path.endswith('.csv') or input_path.endswith('.xlsx')):
+    if os.path.isfile(input_path) and (
+        input_path.endswith(".csv") or input_path.endswith(".xlsx")
+    ):
         files = [input_path]
 
     elif os.path.isdir(input_path):
         files = [
             os.path.join(input_path, f)
             for f in os.listdir(input_path)
-            if f.endswith('.csv') or f.endswith('.xlsx')
+            if f.endswith(".csv") or f.endswith(".xlsx")
         ]
 
     else:
-        raise ValueError("Le chemin fourni n'est ni un fichier CSV/XLSX existant ni un dossier valide")
-    
-    print(f"Fichiers trouvés : {files}")
+        raise ValueError(
+            "Le chemin fourni n'est ni un fichier CSV/XLSX existant ni un dossier valide"
+        )
 
+    print(f"Fichiers trouvés : {files}")
+    isUniqueFile = len(files) == 1
     for file_path in files:
         print(f"Traitement du fichier : {file_path}")
         df = get_dataframe_cleaned_new(file_path)
 
         # Appliquer le filtre sur la colonne pour la valeur souhaitée
-        
+
         filter_config = config.get("FILTER", {})
         filter_col = filter_config.get("column")
         filter_val = filter_config.get("value")
 
-
         if filter_col and filter_val:
             normalized_col = normalize_column(filter_col)
             if normalized_col in df.columns:
-                df = df[df[normalized_col] == filter_val]
-                logging.info(f"Filtre appliqué : {filter_col} = {filter_val} ({len(df)} lignes restantes)")
+                df = df.filter(df[normalized_col] == filter_val)
+                logging.info(
+                    f"Filtre appliqué : {filter_col} = {filter_val} ({len(df)} lignes restantes)"
+                )
             else:
-                logging.warning(f"Filtre ignoré : colonne '{filter_col}' absente après normalisation.")
-
-
-
+                logging.warning(
+                    f"Filtre ignoré : colonne '{filter_col}' absente après normalisation."
+                )
 
         print(df.columns)
         types_dict = postgrestype_dict(df)
@@ -89,7 +94,8 @@ def main(input_path=None) -> None:
         table_name = f"{config.get('TABLE_PREFIX', '')}{os.path.splitext(os.path.basename(file_path))[0]}"
         create_table_from_csv(engine, df, table_name, types_dict)
         print(f"Table {table_name} créée")
-        df.dropna(how="all", inplace=True)
+        # Drop rows where all values are null (polars equivalent)
+        df = df.filter(~df.select([pl.all().is_null()]).fold(lambda a, b: a & b).to_series())
         overwrite_table_with_csv_data(engine, df, table_name)
         print(f"Données du fichier {file_path} chargées dans la table {table_name}")
 
