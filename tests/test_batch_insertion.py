@@ -11,7 +11,6 @@ import os
 # Ajouter le répertoire parent au path pour importer les modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import polars as pl
 
 
 def test_batch_logic():
@@ -37,7 +36,7 @@ def test_batch_logic():
         print(f"  Nombre de batchs: {num_batches}")
 
         if total_rows <= batch_size:
-            print(f"  > Insertion unique (pas de batch)")
+            print("  > Insertion unique (pas de batch)")
         else:
             print(f"  > {num_batches} batch(s) necessaire(s)")
             for i in range(0, total_rows, batch_size):

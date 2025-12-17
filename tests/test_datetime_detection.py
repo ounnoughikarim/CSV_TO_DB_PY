@@ -8,6 +8,7 @@ contenant différents formats de dates internationaux.
 import sys
 import os
 import logging
+import polars as pl
 
 # Ajouter le répertoire parent au path pour importer les modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -15,8 +16,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 # Configure logging avant d'importer les modules
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
-
-import polars as pl
 
 
 def detect_and_parse_datetime_column(dataframe, column_name):
@@ -146,7 +145,7 @@ def test_datetime_detection():
     print_separator()
 
     # Afficher le seuil de détection utilisé
-    print(f"Configuration du test : seuil de detection = 70% (0.7)")
+    print("Configuration du test : seuil de detection = 70% (0.7)")
     print("Note: Par defaut dans mainConfig.json, le seuil est 100% (1.0) pour desactiver la detection automatique")
     print_separator()
 
