@@ -1,6 +1,6 @@
 {
     "DATABASE_CONFIG" :{
-        "type": "postgres", 
+        "type": "postgres",
         "host": "hostname",
         "port": 5432,
         "user": "postgres",
@@ -10,6 +10,8 @@
 
     "files_dir" :'C:\\Users\\path', // it can be a file or a folder path with multiple files
     "table":'test', // table used uniquely for one file path, it will create a table with this name otherwise it will create a table with the file name
-    "delimiter":';' // delimiter used
+    "delimiter":';', // delimiter used
+
+    "datetime_detection_threshold": 1.0 // (optional) Threshold for datetime detection (0.0 to 1.0). Default: 1.0 (100%, detection disabled). Set to 0.7 for 70% threshold.
 
 }
