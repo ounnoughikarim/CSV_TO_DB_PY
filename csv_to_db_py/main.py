@@ -91,14 +91,14 @@ def main(input_path=None) -> None:
         types_dict = postgrestype_dict(df)
         print(types_dict)
         
-        if not isUniqueFile:
+        if isUniqueFile:
             table_name = config['table']
         else:
             table_name = os.path.splitext(os.path.basename(file_path))[0]
         create_table_from_csv(engine, df, table_name, types_dict)
         print(f"Table {table_name} créée")
         # Drop rows where all values are null (polars equivalent)
-        df = df.filter(~df.select([pl.all().is_null()]).fold(lambda a, b: a & b).to_series())
+        df = df.filter(~pl.all_horizontal(pl.all().is_null()))
         overwrite_table_with_csv_data(engine, df, table_name)
         print(f"Données du fichier {file_path} chargées dans la table {table_name}")
 

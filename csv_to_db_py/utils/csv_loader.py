@@ -172,18 +172,39 @@ def detect_and_parse_datetime_column(dataframe, column_name):
     return dataframe
 
 
-def postgrestype_dict(dataframe):
-    # Lecture des noms de colonnes à partir du fichier
+def postgrestype_dict(dataframe, sample_size=10000):
+    """
+    Détermine les types PostgreSQL pour chaque colonne du DataFrame.
+
+    Args:
+        dataframe: DataFrame Polars
+        sample_size: Taille maximale de l'échantillon pour l'analyse des types.
+                     Si le DataFrame est plus grand, un échantillon aléatoire est utilisé.
+
+    Returns:
+        dict: Mapping {nom_colonne: type_postgresql}
+    """
     column_types = {}
 
-    # First pass: detect and convert datetime columns
-    for column_name in dataframe.columns:
-        dataframe = detect_and_parse_datetime_column(dataframe, column_name)
+    # Use sample if dataframe is larger than sample_size
+    num_rows = len(dataframe)
+    if num_rows > sample_size:
+        logger.info(
+            f"DataFrame contient {num_rows} lignes. Utilisation d'un échantillon aléatoire "
+            f"de {sample_size} lignes pour la détection des types."
+        )
+        df_sample = dataframe.sample(n=sample_size, seed=42)
+    else:
+        df_sample = dataframe
+
+    # First pass: detect and convert datetime columns on the sample
+    for column_name in df_sample.columns:
+        df_sample = detect_and_parse_datetime_column(df_sample, column_name)
 
     # Second pass: map types to PostgreSQL
-    for column_name in dataframe.columns:
+    for column_name in df_sample.columns:
         column_types[column_name] = map_polars_dtype_to_postgresql(
-            dataframe[column_name]
+            df_sample[column_name]
         )
 
     return column_types
@@ -194,8 +215,8 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name):
         # Convert polars DataFrame to pandas for SQLAlchemy compatibility
         pandas_data = csv_data.to_pandas()
 
-        # Get batch size from config (default: 100000)
-        batch_size = config.get("batch_size", 100000)
+        # Get batch size from config (default: 10000)
+        batch_size = config.get("batch_size", 10000)
         total_rows = len(pandas_data)
 
         if total_rows <= batch_size:

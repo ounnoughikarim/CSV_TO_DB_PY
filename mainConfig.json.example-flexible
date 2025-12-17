@@ -11,5 +11,5 @@
     "table": "my_table",
     "delimiter": ";",
     "datetime_detection_threshold": 0.7,
-    "batch_size": 100000
+    "batch_size": 10000
 }

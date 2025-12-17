@@ -144,6 +144,29 @@ Batch 3: Rows 200,001 to 250,000 (50,000 rows) - APPEND
 - Smaller batch sizes = slower but safer for limited memory
 - Default 100k is optimal for most use cases
 
+### Type Detection Optimization (Sampling)
+
+For large datasets, type detection automatically uses random sampling to improve performance:
+
+**How it works:**
+- If DataFrame has ≤ 10,000 rows: Full dataset is analyzed
+- If DataFrame has > 10,000 rows: Random sample of 10,000 rows is used
+- Sample uses fixed seed (42) for reproducibility
+- Applies to both type detection and datetime format detection
+
+**Benefits:**
+- ✅ Significantly faster type detection for large files (millions of rows)
+- ✅ Sample size of 10,000 rows provides excellent type accuracy
+- ✅ Reduces processing time without compromising quality
+- ✅ Transparent logging when sampling is used
+
+**Example:**
+```
+DataFrame contient 5,000,000 lignes. Utilisation d'un échantillon aléatoire de 10000 lignes pour la détection des types.
+```
+
+**Note:** This optimization only affects type detection. The full dataset is still loaded and inserted into the database.
+
 ### Datetime Detection Behavior
 
 The datetime detection threshold controls how strict the algorithm is when detecting date columns:
