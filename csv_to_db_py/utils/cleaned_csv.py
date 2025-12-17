@@ -32,7 +32,6 @@ def normalize_column(name: str) -> str:
     return name
 
 
-
 def get_dataframe_cleaned_new(file_path):
     # --- 1) Lecture du fichier selon l'extension ---
     if file_path.endswith(".xlsx"):
@@ -48,20 +47,18 @@ def get_dataframe_cleaned_new(file_path):
 
         # Essayer UTF-8, sinon fallback Latin-1
         try:
-            df = pl.read_csv(
-                file_path, separator=delimiter, encoding="utf-8"
-            )
+            df = pl.read_csv(file_path, separator=delimiter, encoding="utf-8")
         except UnicodeDecodeError:
             print("[ENCODING] UTF-8 échoué, tentative avec Latin-1...")
-            df = pl.read_csv(
-                file_path, separator=delimiter, encoding="latin1"
-            )
+            df = pl.read_csv(file_path, separator=delimiter, encoding="latin1")
 
     else:
         raise ValueError(f"Format non supporté : {file_path}")
 
     # --- 2) Nettoyage des colonnes ---
-    new_columns = [col.replace(" ", "").replace(".", "").replace("/", "") for col in df.columns]
+    new_columns = [
+        col.replace(" ", "").replace(".", "").replace("/", "") for col in df.columns
+    ]
     new_columns = normalize_and_dedup_columns(new_columns)
     df = df.rename(dict(zip(df.columns, new_columns)))
 
@@ -80,5 +77,3 @@ def normalize_and_dedup_columns(columns):
         else:
             new_cols.append(f"{normed}_{seen[normed]}")
     return new_cols
-
-

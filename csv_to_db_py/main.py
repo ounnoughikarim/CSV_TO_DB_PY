@@ -90,9 +90,9 @@ def main(input_path=None) -> None:
         print(df.columns)
         types_dict = postgrestype_dict(df)
         print(types_dict)
-        
+
         if isUniqueFile:
-            table_name = config['table']
+            table_name = config["table"]
         else:
             table_name = os.path.splitext(os.path.basename(file_path))[0]
         create_table_from_csv(engine, df, table_name, types_dict)

@@ -9,8 +9,7 @@ import sys
 import os
 
 # Ajouter le répertoire parent au path pour importer les modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 def test_batch_logic():
@@ -43,7 +42,9 @@ def test_batch_logic():
                 batch_num = (i // batch_size) + 1
                 end_idx = min(i + batch_size, total_rows)
                 batch_rows = end_idx - i
-                print(f"     Batch {batch_num}: lignes {i+1:,} à {end_idx:,} ({batch_rows:,} lignes)")
+                print(
+                    f"     Batch {batch_num}: lignes {i + 1:,} à {end_idx:,} ({batch_rows:,} lignes)"
+                )
 
     print("\n" + "=" * 80)
     print("Test terminé!")

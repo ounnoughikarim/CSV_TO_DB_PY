@@ -11,10 +11,10 @@ import logging
 import polars as pl
 
 # Ajouter le répertoire parent au path pour importer les modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Configure logging avant d'importer les modules
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -49,9 +49,11 @@ def detect_and_parse_datetime_column(dataframe, column_name):
         )
 
         parsed_col = parsed[column_name]
-        original_indices = column.to_frame().with_row_count("idx").filter(
-            (column.is_not_null()) & (column.str.strip_chars() != "")
-        )["idx"]
+        original_indices = (
+            column.to_frame()
+            .with_row_count("idx")
+            .filter((column.is_not_null()) & (column.str.strip_chars() != ""))["idx"]
+        )
 
         parsed_useful = parsed_col.gather(original_indices)
         parsed_useful = parsed_useful.filter(parsed_useful.is_not_null())
@@ -76,21 +78,17 @@ def detect_and_parse_datetime_column(dataframe, column_name):
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%dT%H:%M:%S",
         "%Y-%m-%dT%H:%M:%S.%f",
-
         # French/European formats (DD/MM/YYYY)
         "%d/%m/%Y",
         "%d/%m/%Y %H:%M:%S",
         "%d/%m/%y",
-
         # American formats (MM/DD/YYYY) - with AM/PM support
         "%m/%d/%Y",
         "%m/%d/%Y %H:%M:%S",
         "%m/%d/%Y %I:%M:%S %p",  # 12-hour format with AM/PM
-
         # European dot format (DD.MM.YYYY)
         "%d.%m.%Y",
         "%d.%m.%Y %H:%M:%S",
-
         # Other formats
         "%d-%m-%Y",
         "%d-%m-%Y %H:%M:%S",
@@ -104,13 +102,19 @@ def detect_and_parse_datetime_column(dataframe, column_name):
     for date_format in common_formats:
         try:
             parsed = dataframe.with_columns(
-                pl.col(column_name).str.strptime(pl.Datetime, format=date_format, strict=False)
+                pl.col(column_name).str.strptime(
+                    pl.Datetime, format=date_format, strict=False
+                )
             )
 
             parsed_col = parsed[column_name]
-            original_indices = column.to_frame().with_row_count("idx").filter(
-                (column.is_not_null()) & (column.str.strip_chars() != "")
-            )["idx"]
+            original_indices = (
+                column.to_frame()
+                .with_row_count("idx")
+                .filter((column.is_not_null()) & (column.str.strip_chars() != ""))[
+                    "idx"
+                ]
+            )
 
             parsed_useful = parsed_col.gather(original_indices)
             parsed_useful = parsed_useful.filter(parsed_useful.is_not_null())
@@ -146,7 +150,9 @@ def test_datetime_detection():
 
     # Afficher le seuil de détection utilisé
     print("Configuration du test : seuil de detection = 70% (0.7)")
-    print("Note: Par defaut dans mainConfig.json, le seuil est 100% (1.0) pour desactiver la detection automatique")
+    print(
+        "Note: Par defaut dans mainConfig.json, le seuil est 100% (1.0) pour desactiver la detection automatique"
+    )
     print_separator()
 
     print(f"Lecture du fichier de test : {test_file}")
@@ -176,7 +182,8 @@ def test_datetime_detection():
         # Pour les colonnes string seulement
         if "Utf8" in col_dtype or "String" in col_dtype:
             useful_values = df[column_name].filter(
-                (df[column_name].is_not_null()) & (df[column_name].str.strip_chars() != "")
+                (df[column_name].is_not_null())
+                & (df[column_name].str.strip_chars() != "")
             )
         else:
             useful_values = df[column_name].filter(df[column_name].is_not_null())
@@ -195,19 +202,23 @@ def test_datetime_detection():
         if detected:
             print(f"   [OK] DETECTE comme datetime : {new_type}")
             # Compter combien ont été parsées
-            parsed_values = df_parsed[column_name].filter(df_parsed[column_name].is_not_null())
+            parsed_values = df_parsed[column_name].filter(
+                df_parsed[column_name].is_not_null()
+            )
             print(f"   {len(parsed_values)} valeurs parsees avec succes")
         else:
             print(f"   [X] NON DETECTE (reste {new_type})")
 
-        results.append({
-            "colonne": column_name,
-            "détecté": detected,
-            "type_original": str(df[column_name].dtype),
-            "type_final": str(new_type),
-            "valeurs_utiles": num_useful,
-            "nulls": num_null
-        })
+        results.append(
+            {
+                "colonne": column_name,
+                "détecté": detected,
+                "type_original": str(df[column_name].dtype),
+                "type_final": str(new_type),
+                "valeurs_utiles": num_useful,
+                "nulls": num_null,
+            }
+        )
 
         print("-" * 80)
 
@@ -224,8 +235,10 @@ def test_datetime_detection():
 
     for result in results:
         status = "[OK]" if result["détecté"] else "[X]"
-        print(f"{status} {result['colonne']:20s} | {result['type_original']:10s} -> {result['type_final']:20s} | "
-              f"{result['valeurs_utiles']} valeurs utiles, {result['nulls']} nulls")
+        print(
+            f"{status} {result['colonne']:20s} | {result['type_original']:10s} -> {result['type_final']:20s} | "
+            f"{result['valeurs_utiles']} valeurs utiles, {result['nulls']} nulls"
+        )
 
     print_separator()
 

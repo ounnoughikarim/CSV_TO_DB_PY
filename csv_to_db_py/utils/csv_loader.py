@@ -85,9 +85,11 @@ def detect_and_parse_datetime_column(dataframe, column_name):
 
         # On doit compter combien de valeurs utiles ont été converties en dates
         # Pour cela, on regarde la colonne parsée aux mêmes positions que les valeurs utiles
-        original_indices = column.to_frame().with_row_count("idx").filter(
-            (column.is_not_null()) & (column.str.strip_chars() != "")
-        )["idx"]
+        original_indices = (
+            column.to_frame()
+            .with_row_count("idx")
+            .filter((column.is_not_null()) & (column.str.strip_chars() != ""))["idx"]
+        )
 
         parsed_useful = parsed_col.gather(original_indices)
         parsed_useful = parsed_useful.filter(parsed_useful.is_not_null())
@@ -114,21 +116,17 @@ def detect_and_parse_datetime_column(dataframe, column_name):
         "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%dT%H:%M:%S",
         "%Y-%m-%dT%H:%M:%S.%f",
-
         # French/European formats (DD/MM/YYYY)
         "%d/%m/%Y",
         "%d/%m/%Y %H:%M:%S",
         "%d/%m/%y",
-
         # American formats (MM/DD/YYYY) - with AM/PM support
         "%m/%d/%Y",
         "%m/%d/%Y %H:%M:%S",
         "%m/%d/%Y %I:%M:%S %p",  # 12-hour format with AM/PM
-
         # European dot format (DD.MM.YYYY)
         "%d.%m.%Y",
         "%d.%m.%Y %H:%M:%S",
-
         # Other formats
         "%d-%m-%Y",
         "%d-%m-%Y %H:%M:%S",
@@ -141,14 +139,20 @@ def detect_and_parse_datetime_column(dataframe, column_name):
         try:
             # strict=False: invalid values become null
             parsed = dataframe.with_columns(
-                pl.col(column_name).str.strptime(pl.Datetime, format=date_format, strict=False)
+                pl.col(column_name).str.strptime(
+                    pl.Datetime, format=date_format, strict=False
+                )
             )
 
             # Same logic as above
             parsed_col = parsed[column_name]
-            original_indices = column.to_frame().with_row_count("idx").filter(
-                (column.is_not_null()) & (column.str.strip_chars() != "")
-            )["idx"]
+            original_indices = (
+                column.to_frame()
+                .with_row_count("idx")
+                .filter((column.is_not_null()) & (column.str.strip_chars() != ""))[
+                    "idx"
+                ]
+            )
 
             parsed_useful = parsed_col.gather(original_indices)
             parsed_useful = parsed_useful.filter(parsed_useful.is_not_null())
@@ -221,13 +225,17 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name):
 
         if total_rows <= batch_size:
             # Single batch insertion
-            pandas_data.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
+            pandas_data.to_sql(
+                name=table_name, con=engine, if_exists="replace", index=False
+            )
             logger.info(
                 f"Table '{table_name}' écrasée avec {total_rows} lignes (insertion unique)"
             )
         else:
             # Multi-batch insertion
-            num_batches = (total_rows + batch_size - 1) // batch_size  # Ceiling division
+            num_batches = (
+                total_rows + batch_size - 1
+            ) // batch_size  # Ceiling division
             logger.info(
                 f"Insertion de {total_rows} lignes dans '{table_name}' par batch de {batch_size} "
                 f"({num_batches} batch(s))"
@@ -240,20 +248,22 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name):
 
                 # First batch: replace table, subsequent batches: append
                 if_exists = "replace" if i == 0 else "append"
-                batch_data.to_sql(name=table_name, con=engine, if_exists=if_exists, index=False)
+                batch_data.to_sql(
+                    name=table_name, con=engine, if_exists=if_exists, index=False
+                )
 
                 logger.info(
                     f"  Batch {batch_num}/{num_batches}: {len(batch_data)} lignes insérées "
-                    f"(lignes {i+1} à {end_idx})"
+                    f"(lignes {i + 1} à {end_idx})"
                 )
 
-            logger.info(f"Insertion terminée: {total_rows} lignes insérées dans '{table_name}'")
+            logger.info(
+                f"Insertion terminée: {total_rows} lignes insérées dans '{table_name}'"
+            )
 
     except psycopg2.Error as e:
         logger.error(
             f"Erreur lors de l'écriture des données dans la table '{table_name}': {e}"
         )
     except Exception as e:
-        logger.error(
-            f"Erreur inattendue lors de l'écriture dans '{table_name}': {e}"
-        )
+        logger.error(f"Erreur inattendue lors de l'écriture dans '{table_name}': {e}")
