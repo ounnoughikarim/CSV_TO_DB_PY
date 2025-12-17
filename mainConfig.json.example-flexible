@@ -1,0 +1,15 @@
+{
+    "DATABASE_CONFIG": {
+        "type": "postgres",
+        "host": "localhost",
+        "port": 5432,
+        "user": "postgres",
+        "password": "your_password",
+        "database": "your_database"
+    },
+    "files_dir": "C:\\path\\to\\your\\files",
+    "table": "my_table",
+    "delimiter": ";",
+    "datetime_detection_threshold": 0.7,
+    "batch_size": 10000
+}

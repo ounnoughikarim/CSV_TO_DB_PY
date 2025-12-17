@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: CSV to DB",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/csv_to_db_py/main.py",
+            "console": "integratedTerminal",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: CSV to DB (with log level)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/csv_to_db_py/main.py",
+            "args": ["--log-level", "info"],
+            "console": "integratedTerminal",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "justMyCode": true
+        }
+    ]
+}
