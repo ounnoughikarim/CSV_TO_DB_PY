@@ -203,4 +203,5 @@ Check code before committing:
 ```bash
 uv run ruff check . --fix
 uv run ruff check .
+uv run ruff format
 ```
