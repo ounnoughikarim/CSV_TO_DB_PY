@@ -12,6 +12,8 @@
     "table":'test', // table used uniquely for one file path, it will create a table with this name otherwise it will create a table with the file name
     "delimiter":';', // delimiter used
 
-    "datetime_detection_threshold": 1.0 // (optional) Threshold for datetime detection (0.0 to 1.0). Default: 1.0 (100%, detection disabled). Set to 0.7 for 70% threshold.
+    "datetime_detection_threshold": 1.0, // (optional) Threshold for datetime detection (0.0 to 1.0). Default: 1.0 (100%, detection disabled). Set to 0.7 for 70% threshold.
+
+    "batch_size": 100000 // (optional) Number of rows to insert per batch. Default: 100000. Use smaller values for memory-constrained environments.
 
 }

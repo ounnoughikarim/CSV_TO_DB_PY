@@ -10,5 +10,6 @@
     "files_dir": "C:\\path\\to\\your\\files",
     "table": "my_table",
     "delimiter": ";",
-    "datetime_detection_threshold": 0.7
+    "datetime_detection_threshold": 0.7,
+    "batch_size": 100000
 }

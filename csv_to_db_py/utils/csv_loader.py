@@ -193,11 +193,46 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name):
     try:
         # Convert polars DataFrame to pandas for SQLAlchemy compatibility
         pandas_data = csv_data.to_pandas()
-        pandas_data.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
-        logger.warning(
-            f"La table '{table_name}' a été écrasée avec les données du fichier CSV correspondant."
-        )
+
+        # Get batch size from config (default: 100000)
+        batch_size = config.get("batch_size", 100000)
+        total_rows = len(pandas_data)
+
+        if total_rows <= batch_size:
+            # Single batch insertion
+            pandas_data.to_sql(name=table_name, con=engine, if_exists="replace", index=False)
+            logger.info(
+                f"Table '{table_name}' écrasée avec {total_rows} lignes (insertion unique)"
+            )
+        else:
+            # Multi-batch insertion
+            num_batches = (total_rows + batch_size - 1) // batch_size  # Ceiling division
+            logger.info(
+                f"Insertion de {total_rows} lignes dans '{table_name}' par batch de {batch_size} "
+                f"({num_batches} batch(s))"
+            )
+
+            for i in range(0, total_rows, batch_size):
+                batch_num = (i // batch_size) + 1
+                end_idx = min(i + batch_size, total_rows)
+                batch_data = pandas_data.iloc[i:end_idx]
+
+                # First batch: replace table, subsequent batches: append
+                if_exists = "replace" if i == 0 else "append"
+                batch_data.to_sql(name=table_name, con=engine, if_exists=if_exists, index=False)
+
+                logger.info(
+                    f"  Batch {batch_num}/{num_batches}: {len(batch_data)} lignes insérées "
+                    f"(lignes {i+1} à {end_idx})"
+                )
+
+            logger.info(f"Insertion terminée: {total_rows} lignes insérées dans '{table_name}'")
+
     except psycopg2.Error as e:
         logger.error(
             f"Erreur lors de l'écriture des données dans la table '{table_name}': {e}"
+        )
+    except Exception as e:
+        logger.error(
+            f"Erreur inattendue lors de l'écriture dans '{table_name}': {e}"
         )

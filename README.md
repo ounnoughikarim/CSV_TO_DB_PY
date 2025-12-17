@@ -41,7 +41,8 @@ Create `mainConfig.json` from the template:
     "files_dir": "C:\\path\\to\\your\\file",
     "table": "table_name",
     "delimiter": ";",
-    "datetime_detection_threshold": 1.0
+    "datetime_detection_threshold": 1.0,
+    "batch_size": 100000
 }
 ```
 
@@ -67,6 +68,15 @@ Create `mainConfig.json` from the template:
     - `1.0`: Only columns with 100% valid dates are detected (safest, default)
     - `0.9`: Allows up to 10% invalid date values
     - `0.7`: Allows up to 30% invalid date values (recommended for real-world data)
+- `batch_size`: *(optional)* Number of rows to insert per batch for large files
+  - Default: `100000` (100k rows per batch)
+  - Reduces memory usage for large datasets
+  - SQLAlchemy can struggle with very large files, batching prevents memory issues
+  - **Recommended values:**
+    - `100000`: Default, good for most cases (files up to several GB)
+    - `50000`: For memory-constrained environments
+    - `10000`: For very limited memory or extremely wide tables (many columns)
+    - `500000`: For high-memory systems and faster insertions
 
 ## Usage
 
@@ -107,6 +117,32 @@ This test uses a sample CSV file ([tests/date_formats_test.csv](tests/date_forma
 - **bool_column**: Boolean values
 
 The test demonstrates automatic format detection, handling of null values, conversion of invalid values to null, and proper rejection of non-date columns.
+
+### Batch Insertion for Large Files
+
+For large datasets, the tool automatically splits data insertion into batches to prevent memory issues:
+
+**How it works:**
+- If total rows ≤ `batch_size`: Single insertion (fastest)
+- If total rows > `batch_size`: Multiple insertions in batches
+
+**Example with 250,000 rows and `batch_size: 100000`:**
+```
+Batch 1: Rows 1 to 100,000 (100,000 rows) - REPLACE table
+Batch 2: Rows 100,001 to 200,000 (100,000 rows) - APPEND
+Batch 3: Rows 200,001 to 250,000 (50,000 rows) - APPEND
+```
+
+**Benefits:**
+- ✅ Prevents memory overflow with large files
+- ✅ Better progress tracking through logs
+- ✅ Allows processing files larger than available RAM
+- ✅ Automatic recovery possible (first batch creates table structure)
+
+**Performance tips:**
+- Larger batch sizes = faster insertion but more memory usage
+- Smaller batch sizes = slower but safer for limited memory
+- Default 100k is optimal for most use cases
 
 ### Datetime Detection Behavior
 
