@@ -128,7 +128,8 @@ For large datasets, the tool automatically splits data insertion into batches to
 
 **Example with 250,000 rows and `batch_size: 100000`:**
 ```
-Batch 1: Rows 1 to 100,000 (100,000 rows) - REPLACE table
+Pre-step: TRUNCATE table if it already exists (preserves schema & dependent views)
+Batch 1: Rows 1 to 100,000 (100,000 rows) - APPEND
 Batch 2: Rows 100,001 to 200,000 (100,000 rows) - APPEND
 Batch 3: Rows 200,001 to 250,000 (50,000 rows) - APPEND
 ```
@@ -138,6 +139,25 @@ Batch 3: Rows 200,001 to 250,000 (50,000 rows) - APPEND
 - ✅ Better progress tracking through logs
 - ✅ Allows processing files larger than available RAM
 - ✅ Automatic recovery possible (first batch creates table structure)
+
+### Table Overwrite Strategy
+
+When a table already exists, the tool **does not DROP** it. Instead it runs `TRUNCATE` then appends the new data.
+
+**Why:**
+
+- Dropping a table fails if a view (or other object) depends on it.
+- TRUNCATE empties the rows while preserving the table schema and any dependent views/constraints.
+
+**Behavior:**
+
+- Table exists → `TRUNCATE TABLE "<name>"` then `INSERT` (append mode).
+- Table does not exist → created automatically by `to_sql` with detected types.
+
+**Caveat — schema drift:**
+
+- TRUNCATE keeps the **existing** column definitions. If the new CSV has different columns (added/removed/renamed) or incompatible types, the append will fail.
+- In that case you must manually `DROP TABLE ... CASCADE` (and recreate dependent views) or alter the table to match the new schema.
 
 **Performance tips:**
 - Larger batch sizes = faster insertion but more memory usage
