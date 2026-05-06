@@ -5,7 +5,7 @@ from db_connectors.base import BaseDBConnector
 class PostgresConnector(BaseDBConnector):
     def connect(self):
         cfg = self.config
-        #url = f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['database']}"
+        # url = f"postgresql+psycopg2://{cfg['user']}:{cfg['password']}@{cfg['host']}:{cfg['port']}/{cfg['database']}"
         url = URL.create(
             "postgresql+psycopg2",
             username=cfg["user"],
