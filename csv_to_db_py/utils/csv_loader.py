@@ -1,7 +1,17 @@
 import polars as pl
 import psycopg2
+from sqlalchemy import inspect, text
 from logger import logger
 from csv_to_db_py.config import config
+
+
+def _truncate_if_exists(engine, table_name):
+    """TRUNCATE if table exists → preserve schema & dependent views. Returns True if truncated."""
+    if inspect(engine).has_table(table_name):
+        with engine.begin() as conn:
+            conn.execute(text(f'TRUNCATE TABLE "{table_name}"'))
+        return True
+    return False
 
 
 def polars_type_to_sql(dtype):
@@ -223,13 +233,16 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name):
         batch_size = config.get("batch_size", 10000)
         total_rows = len(pandas_data)
 
+        # TRUNCATE if exists → preserve schema + dependent views. Else to_sql creates table.
+        truncated = _truncate_if_exists(engine, table_name)
+
         if total_rows <= batch_size:
-            # Single batch insertion
             pandas_data.to_sql(
-                name=table_name, con=engine, if_exists="replace", index=False
+                name=table_name, con=engine, if_exists="append", index=False
             )
             logger.info(
-                f"Table '{table_name}' écrasée avec {total_rows} lignes (insertion unique)"
+                f"Table '{table_name}' {'vidée puis remplie' if truncated else 'créée'} "
+                f"avec {total_rows} lignes (insertion unique)"
             )
         else:
             # Multi-batch insertion
@@ -246,10 +259,8 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name):
                 end_idx = min(i + batch_size, total_rows)
                 batch_data = pandas_data.iloc[i:end_idx]
 
-                # First batch: replace table, subsequent batches: append
-                if_exists = "replace" if i == 0 else "append"
                 batch_data.to_sql(
-                    name=table_name, con=engine, if_exists=if_exists, index=False
+                    name=table_name, con=engine, if_exists="append", index=False
                 )
 
                 logger.info(
