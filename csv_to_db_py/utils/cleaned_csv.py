@@ -46,7 +46,9 @@ def get_dataframe_cleaned_new(file_path):
         print(f"Lecture CSV : {file_path}")
 
         # Utiliser le délimiteur du config si dispo, sinon détecter
-        delimiter = config.get("delimiter", detect_delimiter(file_path))
+        delimiter = config.get("delimiter")
+        if delimiter is None:
+            delimiter = detect_delimiter(file_path)
         print(f"Délimiteur utilisé pour {file_path}: '{delimiter}'")
 
         # Essayer UTF-8, sinon fallback Latin-1
