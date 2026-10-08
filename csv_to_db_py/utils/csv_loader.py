@@ -1,7 +1,7 @@
 import polars as pl
 import psycopg2
 from sqlalchemy import inspect, text
-from logger import logger
+from csv_to_db_py.logger import logger
 from csv_to_db_py.config import config
 
 

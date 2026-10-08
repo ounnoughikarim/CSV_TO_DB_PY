@@ -1,13 +1,13 @@
 from csv_to_db_py.config import config
 
 from csv_to_db_py.utils.table_creator import create_table_from_csv
-from db_connectors import postgres, mysql, mssql, oracle
+from csv_to_db_py.db_connectors import postgres, mysql, mssql, oracle
 from csv_to_db_py.utils.csv_loader import (
     postgrestype_dict,
     overwrite_table_with_csv_data,
 )
-from utils.cleaned_csv import get_dataframe_cleaned_new
-from utils.cleaned_csv import normalize_column
+from csv_to_db_py.utils.cleaned_csv import get_dataframe_cleaned_new
+from csv_to_db_py.utils.cleaned_csv import normalize_column
 
 import polars as pl
 import sys

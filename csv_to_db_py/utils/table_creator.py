@@ -1,4 +1,4 @@
-from logger import logger
+from csv_to_db_py.logger import logger
 
 
 def create_table_from_csv(engine, dataframe, table, types_dict):
