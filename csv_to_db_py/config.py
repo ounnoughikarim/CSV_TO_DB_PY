@@ -1,5 +1,4 @@
 import json
-import os
 
 SUPPORTED_DB_TYPES = {"postgres", "mysql", "mssql", "oracle"}
 
@@ -17,17 +16,12 @@ def validate_config(cfg: dict) -> None:
         raise ValueError("config is missing required key 'files_dir'")
 
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(script_dir, "..", "mainConfig.json")
-fallback_path = os.path.join(script_dir, "..", "mainConfig.json.example-strict")
-try:
+def load_config(config_path: str) -> dict:
     with open(config_path, "r") as f:
-        config = json.load(f)
-except FileNotFoundError:
-    with open(fallback_path, "r") as f:
-        config = json.load(f)
+        cfg = json.load(f)
+    validate_config(cfg)
+    return cfg
 
-validate_config(config)
 
 PG_RESERVED = {
     "insert",
