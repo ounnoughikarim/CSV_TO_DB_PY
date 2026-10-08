@@ -22,7 +22,7 @@ def _config():
     [
         (PostgresConnector, "postgresql+psycopg2"),
         (MySQLConnector, "mysql+pymysql"),
-        (OracleConnector, "oracle+cx_oracle"),
+        (OracleConnector, "oracle+oracledb"),
         (MSSQLConnector, "mssql+pyodbc"),
     ],
 )

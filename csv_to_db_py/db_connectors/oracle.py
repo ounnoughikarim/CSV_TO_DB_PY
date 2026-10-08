@@ -7,7 +7,7 @@ class OracleConnector(BaseDBConnector):
         cfg = self.config
         # DSN Oracle: host:port/service_name (ex: localhost:1521/XEPDB1)
         url = URL.create(
-            "oracle+cx_oracle",
+            "oracle+oracledb",
             username=cfg["user"],
             password=cfg["password"],
             host=cfg["host"],
