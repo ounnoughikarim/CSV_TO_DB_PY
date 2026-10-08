@@ -26,6 +26,29 @@ cd CSV_TO_DB_PY
 uv sync
 ```
 
+## Install from GitHub Packages
+
+The package is published to GitHub Packages and can be installed with:
+
+```bash
+uv add csv-to-db-py --index-url https://pypi.github.com/xgaia/
+```
+
+or with pip:
+
+```bash
+pip install csv-to-db-py --index-url https://pypi.github.com/xgaia/
+```
+
+## Publishing
+
+To publish a new release to GitHub Packages:
+
+```bash
+uv build
+UV_PUBLISH_TOKEN=<PAT> uv publish
+```
+
 ## Configuration
 
 Create `mainConfig.json` from the template:
@@ -83,12 +106,12 @@ Create `mainConfig.json` from the template:
 ## Usage
 
 ```bash
-uv run python -m csv_to_db_py.main
+uv run csv-to-db --config mainConfig.json
 ```
 
 With custom log level:
 ```bash
-uv run python -m csv_to_db_py.main --log-level info
+uv run csv-to-db --config mainConfig.json --log-level info
 ```
 
 ## Testing
