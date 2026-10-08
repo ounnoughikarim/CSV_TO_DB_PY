@@ -8,7 +8,7 @@ from csv_to_db_py.utils.csv_loader import (
     convert_datetime_columns,
 )
 from csv_to_db_py.utils.cleaned_csv import get_dataframe_cleaned_new
-from csv_to_db_py.utils.cleaned_csv import normalize_column
+from csv_to_db_py.utils.cleaned_csv import apply_filter
 from csv_to_db_py.logger import set_logger
 
 import polars as pl
@@ -84,22 +84,12 @@ def main(input_path=None) -> None:
         df = get_dataframe_cleaned_new(file_path)
 
         # Appliquer le filtre sur la colonne pour la valeur souhaitée
-
         filter_config = config.get("FILTER", {})
-        filter_col = filter_config.get("column")
-        filter_val = filter_config.get("value")
-
-        if filter_col and filter_val:
-            normalized_col = normalize_column(filter_col)
-            if normalized_col in df.columns:
-                df = df.filter(df[normalized_col] == filter_val)
-                logging.info(
-                    f"Filtre appliqué : {filter_col} = {filter_val} ({len(df)} lignes restantes)"
-                )
-            else:
-                logging.warning(
-                    f"Filtre ignoré : colonne '{filter_col}' absente après normalisation."
-                )
+        df = apply_filter(df, filter_config)
+        if filter_config.get("column") and filter_config.get("value") is not None:
+            logging.info(
+                f"Filtre appliqué : {filter_config.get('column')} = {filter_config.get('value')} ({len(df)} lignes restantes)"
+            )
 
         print(df.columns)
         # ponytail: strptime runs on the whole file; polars is fast, re-sample only if it proves too slow

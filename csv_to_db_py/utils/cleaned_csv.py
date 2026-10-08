@@ -3,6 +3,7 @@ import polars as pl
 import re
 from csv_to_db_py.config import config
 from csv_to_db_py.config import PG_RESERVED
+from csv_to_db_py.logger import logger
 
 import csv
 
@@ -70,6 +71,28 @@ def get_dataframe_cleaned_new(file_path):
 
     print(df)
     return df
+
+
+def apply_filter(df, filter_config):
+    filter_col = filter_config.get("column")
+    filter_val = filter_config.get("value")
+    if not filter_col or filter_val is None:
+        return df
+    normalized_col = normalize_column(filter_col)
+    if normalized_col not in df.columns:
+        logger.warning(
+            f"Filtre ignoré : colonne '{filter_col}' absente après normalisation."
+        )
+        return df
+    col = df[normalized_col]
+    try:
+        cast_val = pl.lit(filter_val).cast(col.dtype)
+        return df.filter(col == cast_val)
+    except Exception:
+        logger.warning(
+            f"Filtre ignoré : valeur '{filter_val}' non convertible pour la colonne '{filter_col}'."
+        )
+        return df
 
 
 def normalize_and_dedup_columns(columns):
