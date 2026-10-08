@@ -1,10 +1,11 @@
 import polars as pl
 import pytest
+from pathlib import Path
 
 import csv_to_db_py.config
 from csv_to_db_py.utils.csv_loader import detect_and_parse_datetime_column
 
-TEST_FILE = "tests/date_formats_test.csv"
+TEST_FILE = Path(__file__).parent / "date_formats_test.csv"
 
 DATETIME_COLUMNS = [
     "FR_date",

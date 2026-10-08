@@ -93,12 +93,12 @@ uv run python -m csv_to_db_py.main --log-level info
 
 ## Testing
 
-Test automatic datetime detection with various date formats:
+Run the test suite with pytest:
 ```bash
-uv run python tests/test_datetime_detection.py
+uv run pytest
 ```
 
-This test uses a sample CSV file ([tests/date_formats_test.csv](tests/date_formats_test.csv)) containing 14 columns:
+This suite tests automatic datetime detection with various date formats, using [tests/date_formats_test.csv](tests/date_formats_test.csv) containing 14 columns:
 
 **Date columns (should be detected as datetime):**
 - **FR_date**: French format (DD/MM/YYYY)
@@ -153,13 +153,13 @@ When a table already exists, the tool **does not DROP** it. Instead it runs `TRU
 
 **Behavior:**
 
-- Table exists → `TRUNCATE TABLE "<name>"` then `INSERT` (append mode).
-- Table does not exist → created automatically by `to_sql` with detected types.
+- Table does not exist → pre-created by `create_table_from_csv` with detected types.
+- Table exists → `TRUNCATE TABLE "<name>"` then `INSERT` (append mode). If the existing table's columns differ from the CSV (schema drift), the run aborts with a clear error **before truncating**, so the old data is preserved.
 
 **Caveat — schema drift:**
 
-- TRUNCATE keeps the **existing** column definitions. If the new CSV has different columns (added/removed/renamed) or incompatible types, the append will fail.
-- In that case you must manually `DROP TABLE ... CASCADE` (and recreate dependent views) or alter the table to match the new schema.
+- TRUNCATE keeps the **existing** column definitions. Column-name drift (added/removed/renamed columns) is detected and blocks the overwrite before any data is lost. Type drift is not detected and still fails loudly after truncate.
+- To load a CSV whose schema differs, manually `DROP TABLE ... CASCADE` (and recreate dependent views) or alter the table to match the new schema.
 
 **Performance tips:**
 - Larger batch sizes = faster insertion but more memory usage

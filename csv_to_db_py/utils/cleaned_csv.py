@@ -73,7 +73,7 @@ def get_dataframe_cleaned_new(file_path):
     return df
 
 
-def apply_filter(df, filter_config):
+def apply_filter(df: pl.DataFrame, filter_config: dict) -> pl.DataFrame:
     filter_col = filter_config.get("column")
     filter_val = filter_config.get("value")
     if not filter_col or filter_val is None:

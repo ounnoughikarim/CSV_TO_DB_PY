@@ -5,13 +5,22 @@ from csv_to_db_py.config import config
 from csv_to_db_py.utils.cleaned_csv import quote_identifier
 
 
-def _truncate_if_exists(engine, table_name):
+def _truncate_if_exists(engine, table_name, expected_columns):
     """TRUNCATE if table exists → preserve schema & dependent views. Returns True if truncated."""
-    if inspect(engine).has_table(table_name):
-        with engine.begin() as conn:
-            conn.execute(text(f"TRUNCATE TABLE {quote_identifier(table_name)}"))
-        return True
-    return False
+    inspector = inspect(engine)
+    if not inspector.has_table(table_name):
+        return False
+    db_columns = [column["name"] for column in inspector.get_columns(table_name)]
+    if sorted(db_columns) != sorted(expected_columns):
+        # ponytail: column-name drift is guarded; TYPE drift is not (still fails loudly after truncate)
+        raise ValueError(
+            f"Schema drift on table {table_name!r}: existing columns {sorted(db_columns)} "
+            f"differ from CSV columns {sorted(expected_columns)}. "
+            "DROP TABLE ... CASCADE and recreate dependent views, or align the CSV columns."
+        )
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE TABLE {quote_identifier(table_name)}"))
+    return True
 
 
 def map_polars_dtype_to_postgresql(series):
@@ -44,7 +53,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
 
     Logique de validation:
     - Filtre les nulls et chaînes vides (valeurs non significatives pour l'analyse)
-    - Parmi les valeurs "utiles" restantes, au moins 90% doivent être des dates valides
+    - Parmi les valeurs "utiles" restantes, au moins `datetime_detection_threshold` doivent être des dates valides
     - Les valeurs invalides sont converties en null automatiquement (strict=False)
     - Préserve tous les nulls et chaînes vides originaux
     """
@@ -94,7 +103,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
 
         success_rate = num_parsed / num_useful
 
-        # Si au moins 90% des valeurs utiles sont parsées comme dates, on convertit
+        # Si au moins la part configurée des valeurs utiles est parsée, on convertit
         if success_rate >= MIN_SUCCESS_RATE:
             num_invalid = num_useful - num_parsed
             logger.info(
@@ -156,7 +165,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
             num_parsed = len(parsed_useful)
             success_rate = num_parsed / num_useful
 
-            # Si au moins 90% des valeurs utiles sont parsées, on accepte
+            # Si au moins la part configurée des valeurs utiles est parsée, on accepte
             if success_rate >= MIN_SUCCESS_RATE:
                 num_invalid = num_useful - num_parsed
                 logger.info(
@@ -174,6 +183,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
 
 
 def convert_datetime_columns(dataframe):
+    """Convert every string column that looks like a date, using the configured detection threshold."""
     for column_name in dataframe.columns:
         dataframe = detect_and_parse_datetime_column(dataframe, column_name)
     return dataframe
@@ -221,7 +231,7 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name):
     total_rows = len(pandas_data)
 
     # Typed table always pre-created (create_table_from_csv raises on failure); to_sql only appends.
-    truncated = _truncate_if_exists(engine, table_name)
+    truncated = _truncate_if_exists(engine, table_name, csv_data.columns)
 
     if total_rows <= batch_size:
         pandas_data.to_sql(name=table_name, con=engine, if_exists="append", index=False)

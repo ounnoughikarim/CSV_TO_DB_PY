@@ -6,14 +6,12 @@ SUPPORTED_DB_TYPES = {"postgres", "mysql", "mssql", "oracle"}
 
 def validate_config(cfg: dict) -> None:
     db_config = cfg.get("DATABASE_CONFIG")
-    if db_config is None:
-        raise ValueError("config is missing required key 'DATABASE_CONFIG'")
+    if not isinstance(db_config, dict):
+        raise ValueError("config 'DATABASE_CONFIG' must be a dict")
     db_type = db_config.get("type")
     if db_type not in SUPPORTED_DB_TYPES:
         raise ValueError(
-            "config 'DATABASE_CONFIG.type' must be one of "
-            + ", ".join(sorted(SUPPORTED_DB_TYPES))
-            + f", got {db_type!r}"
+            f"config 'DATABASE_CONFIG.type' must be one of {', '.join(sorted(SUPPORTED_DB_TYPES))}, got {db_type!r}"
         )
     if "files_dir" not in cfg:
         raise ValueError("config is missing required key 'files_dir'")

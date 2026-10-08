@@ -7,8 +7,7 @@ from csv_to_db_py.utils.csv_loader import (
     overwrite_table_with_csv_data,
     convert_datetime_columns,
 )
-from csv_to_db_py.utils.cleaned_csv import get_dataframe_cleaned_new
-from csv_to_db_py.utils.cleaned_csv import apply_filter
+from csv_to_db_py.utils.cleaned_csv import apply_filter, get_dataframe_cleaned_new
 from csv_to_db_py.logger import set_logger
 
 import polars as pl
@@ -18,7 +17,7 @@ import logging
 import argparse
 
 
-def parse_args(argv):
+def parse_args(argv) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="csv_to_db_py",
         description="Load CSV/XLSX files into a database table",
