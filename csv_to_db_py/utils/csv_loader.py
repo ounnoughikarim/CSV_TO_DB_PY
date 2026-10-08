@@ -3,13 +3,14 @@ import psycopg2
 from sqlalchemy import inspect, text
 from csv_to_db_py.logger import logger
 from csv_to_db_py.config import config
+from csv_to_db_py.utils.cleaned_csv import quote_identifier
 
 
 def _truncate_if_exists(engine, table_name):
     """TRUNCATE if table exists → preserve schema & dependent views. Returns True if truncated."""
     if inspect(engine).has_table(table_name):
         with engine.begin() as conn:
-            conn.execute(text(f'TRUNCATE TABLE "{table_name}"'))
+            conn.execute(text(f"TRUNCATE TABLE {quote_identifier(table_name)}"))
         return True
     return False
 

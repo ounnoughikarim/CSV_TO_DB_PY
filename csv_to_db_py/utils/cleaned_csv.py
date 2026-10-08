@@ -17,6 +17,10 @@ def detect_delimiter(file_path):
     return delimiter
 
 
+def quote_identifier(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
 def normalize_column(name: str) -> str:
     reserved_word = Counter()
     name = name.strip().lower()  # lowercase + trim
