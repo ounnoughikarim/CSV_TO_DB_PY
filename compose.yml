@@ -1,0 +1,11 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - 53870:5432
+    environment:
+      POSTGRES_PASSWORD: tsf
+      POSTGRES_USER: tsf
+      POSTGRES_DB: tsf
+    volumes:
+      - ~/docker-data/CSV_TO_DB_PY/postgres:/var/lib/postgresql/data
