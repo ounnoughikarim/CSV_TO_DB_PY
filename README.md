@@ -13,6 +13,8 @@ Convert table files or folders to PostgreSQL database tables.The database need t
 - UV (https://docs.astral.sh/uv/getting-started/installation/)
 - PostgreSQL database
 - files with CSV or XLSX format
+- MySQL/MSSQL/Oracle connections rely on bundled drivers: `pymysql`, `pyodbc`, `oracledb`
+- `pyodbc` additionally requires an ODBC driver; `oracledb` runs in thin mode (no Oracle client needed)
 
 
 
@@ -69,24 +71,24 @@ Create `mainConfig.json` from the template:
     - `0.9`: Allows up to 10% invalid date values
     - `0.7`: Allows up to 30% invalid date values (recommended for real-world data)
 - `batch_size`: *(optional)* Number of rows to insert per batch for large files
-  - Default: `100000` (100k rows per batch)
+  - Default: `10000` (10k rows per batch)
   - Reduces memory usage for large datasets
   - SQLAlchemy can struggle with very large files, batching prevents memory issues
   - **Recommended values:**
-    - `100000`: Default, good for most cases (files up to several GB)
+    - `100000`: Good for most cases (files up to several GB)
     - `50000`: For memory-constrained environments
-    - `10000`: For very limited memory or extremely wide tables (many columns)
+    - `10000`: Default (10k rows per batch), good balance of speed and memory
     - `500000`: For high-memory systems and faster insertions
 
 ## Usage
 
 ```bash
-uv run python csv_to_db_py/main.py
+uv run python -m csv_to_db_py.main
 ```
 
 With custom log level:
 ```bash
-uv run python csv_to_db_py/main.py --log-level info
+uv run python -m csv_to_db_py.main --log-level info
 ```
 
 ## Testing
@@ -162,7 +164,7 @@ When a table already exists, the tool **does not DROP** it. Instead it runs `TRU
 **Performance tips:**
 - Larger batch sizes = faster insertion but more memory usage
 - Smaller batch sizes = slower but safer for limited memory
-- Default 100k is optimal for most use cases
+- Default 10k is optimal for most use cases
 
 ### Type Detection Optimization (Sampling)
 

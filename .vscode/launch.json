@@ -5,7 +5,7 @@
             "name": "Python: CSV to DB",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/csv_to_db_py/main.py",
+            "module": "csv_to_db_py.main",
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",
             "justMyCode": true
@@ -14,7 +14,7 @@
             "name": "Python: CSV to DB (with log level)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/csv_to_db_py/main.py",
+            "module": "csv_to_db_py.main",
             "args": ["--log-level", "info"],
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",
