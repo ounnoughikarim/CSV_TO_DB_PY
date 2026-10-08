@@ -186,6 +186,12 @@ def detect_and_parse_datetime_column(dataframe, column_name):
     return dataframe
 
 
+def convert_datetime_columns(dataframe):
+    for column_name in dataframe.columns:
+        dataframe = detect_and_parse_datetime_column(dataframe, column_name)
+    return dataframe
+
+
 def postgrestype_dict(dataframe, sample_size=10000):
     """
     Détermine les types PostgreSQL pour chaque colonne du DataFrame.
@@ -211,11 +217,6 @@ def postgrestype_dict(dataframe, sample_size=10000):
     else:
         df_sample = dataframe
 
-    # First pass: detect and convert datetime columns on the sample
-    for column_name in df_sample.columns:
-        df_sample = detect_and_parse_datetime_column(df_sample, column_name)
-
-    # Second pass: map types to PostgreSQL
     for column_name in df_sample.columns:
         column_types[column_name] = map_polars_dtype_to_postgresql(
             df_sample[column_name]

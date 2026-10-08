@@ -5,6 +5,7 @@ from csv_to_db_py.db_connectors import postgres, mysql, mssql, oracle
 from csv_to_db_py.utils.csv_loader import (
     postgrestype_dict,
     overwrite_table_with_csv_data,
+    convert_datetime_columns,
 )
 from csv_to_db_py.utils.cleaned_csv import get_dataframe_cleaned_new
 from csv_to_db_py.utils.cleaned_csv import normalize_column
@@ -88,6 +89,8 @@ def main(input_path=None) -> None:
                 )
 
         print(df.columns)
+        # ponytail: strptime runs on the whole file; polars is fast, re-sample only if it proves too slow
+        df = convert_datetime_columns(df)
         types_dict = postgrestype_dict(df)
         print(types_dict)
 
