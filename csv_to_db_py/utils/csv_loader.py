@@ -14,19 +14,6 @@ def _truncate_if_exists(engine, table_name):
     return False
 
 
-def polars_type_to_sql(dtype):
-    dtype_str = str(dtype)
-    if "Int" in dtype_str:
-        return "INTEGER"
-    if "Float" in dtype_str:
-        return "FLOAT"
-    if "Boolean" in dtype_str or "Bool" in dtype_str:
-        return "BOOLEAN"
-    if "Datetime" in dtype_str or "Date" in dtype_str:
-        return "TIMESTAMP"
-    return "TEXT"
-
-
 def map_polars_dtype_to_postgresql(series):
     dtype = series.dtype
     dtype_str = str(dtype)

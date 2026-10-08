@@ -9,14 +9,27 @@ from csv_to_db_py.utils.csv_loader import (
 )
 from csv_to_db_py.utils.cleaned_csv import get_dataframe_cleaned_new
 from csv_to_db_py.utils.cleaned_csv import normalize_column
+from csv_to_db_py.logger import set_logger
 
 import polars as pl
 import sys
 import os
 import logging
+import argparse
 
 
-logging.basicConfig(level=logging.INFO)
+def parse_args(argv):
+    parser = argparse.ArgumentParser(
+        prog="csv_to_db_py",
+        description="Load CSV/XLSX files into a database table",
+    )
+    parser.add_argument("input_path", nargs="?", default=None)
+    parser.add_argument(
+        "--log-level",
+        default="info",
+        choices=["debug", "info", "warning", "error"],
+    )
+    return parser.parse_args(argv)
 
 
 # ---------------------------------------------------------------------------
@@ -107,5 +120,6 @@ def main(input_path=None) -> None:
 
 
 if __name__ == "__main__":
-    input_arg = sys.argv[1] if len(sys.argv) > 1 else None
-    main(input_arg)
+    args = parse_args(sys.argv[1:])
+    set_logger(args.log_level)
+    main(args.input_path)
