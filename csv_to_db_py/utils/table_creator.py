@@ -7,14 +7,10 @@ def create_table_from_csv(engine, dataframe, table, types_dict):
     # query = f"CREATE TABLE {table} ({', '.join([column + ' '+types_dict[column] for column in columns])});"
     columns = dataframe.columns
     query = f"""CREATE TABLE IF NOT EXISTS {quote_identifier(table)} ({", ".join([quote_identifier(column) + " " + types_dict[column] for column in columns])});"""
-    try:
-        with engine.begin() as conn:
-            conn.execute(query)
+    with engine.begin() as conn:
+        conn.execute(query)
 
-        logger.info(f"Table '{table}' crée")
-
-    except Exception as e:
-        logger.error(f"Erreur lors du traitement de '{table}' : {e}")
+    logger.info(f"Table '{table}' crée")
 
     columns = dataframe.columns
 

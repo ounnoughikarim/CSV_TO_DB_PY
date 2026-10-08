@@ -1,5 +1,4 @@
 import polars as pl
-import psycopg2
 from sqlalchemy import inspect, text
 from csv_to_db_py.logger import logger
 from csv_to_db_py.config import config
@@ -226,56 +225,44 @@ def postgrestype_dict(dataframe, sample_size=10000):
 
 
 def overwrite_table_with_csv_data(engine, csv_data, table_name):
-    try:
-        # Convert polars DataFrame to pandas for SQLAlchemy compatibility
-        pandas_data = csv_data.to_pandas()
+    # Convert polars DataFrame to pandas for SQLAlchemy compatibility
+    pandas_data = csv_data.to_pandas()
 
-        # Get batch size from config (default: 10000)
-        batch_size = config.get("batch_size", 10000)
-        total_rows = len(pandas_data)
+    # Get batch size from config (default: 10000)
+    batch_size = config.get("batch_size", 10000)
+    total_rows = len(pandas_data)
 
-        # TRUNCATE if exists → preserve schema + dependent views. Else to_sql creates table.
-        truncated = _truncate_if_exists(engine, table_name)
+    # Typed table always pre-created (create_table_from_csv raises on failure); to_sql only appends.
+    truncated = _truncate_if_exists(engine, table_name)
 
-        if total_rows <= batch_size:
-            pandas_data.to_sql(
+    if total_rows <= batch_size:
+        pandas_data.to_sql(name=table_name, con=engine, if_exists="append", index=False)
+        logger.info(
+            f"Table '{table_name}' {'vidée puis remplie' if truncated else 'créée'} "
+            f"avec {total_rows} lignes (insertion unique)"
+        )
+    else:
+        # Multi-batch insertion
+        num_batches = (total_rows + batch_size - 1) // batch_size  # Ceiling division
+        logger.info(
+            f"Insertion de {total_rows} lignes dans '{table_name}' par batch de {batch_size} "
+            f"({num_batches} batch(s))"
+        )
+
+        for i in range(0, total_rows, batch_size):
+            batch_num = (i // batch_size) + 1
+            end_idx = min(i + batch_size, total_rows)
+            batch_data = pandas_data.iloc[i:end_idx]
+
+            batch_data.to_sql(
                 name=table_name, con=engine, if_exists="append", index=False
             )
-            logger.info(
-                f"Table '{table_name}' {'vidée puis remplie' if truncated else 'créée'} "
-                f"avec {total_rows} lignes (insertion unique)"
-            )
-        else:
-            # Multi-batch insertion
-            num_batches = (
-                total_rows + batch_size - 1
-            ) // batch_size  # Ceiling division
-            logger.info(
-                f"Insertion de {total_rows} lignes dans '{table_name}' par batch de {batch_size} "
-                f"({num_batches} batch(s))"
-            )
-
-            for i in range(0, total_rows, batch_size):
-                batch_num = (i // batch_size) + 1
-                end_idx = min(i + batch_size, total_rows)
-                batch_data = pandas_data.iloc[i:end_idx]
-
-                batch_data.to_sql(
-                    name=table_name, con=engine, if_exists="append", index=False
-                )
-
-                logger.info(
-                    f"  Batch {batch_num}/{num_batches}: {len(batch_data)} lignes insérées "
-                    f"(lignes {i + 1} à {end_idx})"
-                )
 
             logger.info(
-                f"Insertion terminée: {total_rows} lignes insérées dans '{table_name}'"
+                f"  Batch {batch_num}/{num_batches}: {len(batch_data)} lignes insérées "
+                f"(lignes {i + 1} à {end_idx})"
             )
 
-    except psycopg2.Error as e:
-        logger.error(
-            f"Erreur lors de l'écriture des données dans la table '{table_name}': {e}"
+        logger.info(
+            f"Insertion terminée: {total_rows} lignes insérées dans '{table_name}'"
         )
-    except Exception as e:
-        logger.error(f"Erreur inattendue lors de l'écriture dans '{table_name}': {e}")
