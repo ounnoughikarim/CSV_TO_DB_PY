@@ -1,6 +1,5 @@
 import polars as pl
 
-import csv_to_db_py.config
 from csv_to_db_py.utils.csv_loader import (
     convert_datetime_columns,
     postgrestype_dict,
@@ -13,9 +12,8 @@ def _dates_df():
     )
 
 
-def test_convert_datetime_columns_converts_full_dataframe(monkeypatch):
-    monkeypatch.setitem(csv_to_db_py.config.config, "datetime_detection_threshold", 0.7)
-    df = convert_datetime_columns(_dates_df())
+def test_convert_datetime_columns_converts_full_dataframe():
+    df = convert_datetime_columns(_dates_df(), threshold=0.7)
 
     assert df["dates"].dtype == pl.Datetime
     assert df["dates"].to_list()[3] is None

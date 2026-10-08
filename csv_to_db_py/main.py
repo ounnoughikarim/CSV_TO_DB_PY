@@ -80,7 +80,7 @@ def main(input_path=None) -> None:
     isUniqueFile = len(files) == 1
     for file_path in files:
         print(f"Traitement du fichier : {file_path}")
-        df = get_dataframe_cleaned_new(file_path)
+        df = get_dataframe_cleaned_new(file_path, delimiter=config.get("delimiter"))
 
         # Appliquer le filtre sur la colonne pour la valeur souhaitée
         filter_config = config.get("FILTER", {})
@@ -92,7 +92,9 @@ def main(input_path=None) -> None:
 
         print(df.columns)
         # ponytail: strptime runs on the whole file; polars is fast, re-sample only if it proves too slow
-        df = convert_datetime_columns(df)
+        df = convert_datetime_columns(
+            df, threshold=config.get("datetime_detection_threshold", 1.0)
+        )
         types_dict = postgrestype_dict(df)
         print(types_dict)
 
@@ -104,7 +106,9 @@ def main(input_path=None) -> None:
         print(f"Table {table_name} créée")
         # Drop rows where all values are null (polars equivalent)
         df = df.filter(~pl.all_horizontal(pl.all().is_null()))
-        overwrite_table_with_csv_data(engine, df, table_name)
+        overwrite_table_with_csv_data(
+            engine, df, table_name, batch_size=config.get("batch_size", 10000)
+        )
         print(f"Données du fichier {file_path} chargées dans la table {table_name}")
 
 

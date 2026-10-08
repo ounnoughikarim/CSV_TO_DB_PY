@@ -2,7 +2,6 @@ import polars as pl
 import pytest
 from pathlib import Path
 
-import csv_to_db_py.config
 from csv_to_db_py.utils.csv_loader import detect_and_parse_datetime_column
 
 TEST_FILE = Path(__file__).parent / "date_formats_test.csv"
@@ -28,18 +27,15 @@ NON_DATETIME_COLUMNS = [
 ]
 
 
-@pytest.fixture(autouse=True)
-def lowered_detection_threshold(monkeypatch):
-    monkeypatch.setitem(csv_to_db_py.config.config, "datetime_detection_threshold", 0.7)
-
-
 @pytest.fixture
 def dataframe():
     return pl.read_csv(TEST_FILE)
 
 
 def _final_dtype(dataframe, column_name):
-    return detect_and_parse_datetime_column(dataframe, column_name)[column_name].dtype
+    return detect_and_parse_datetime_column(dataframe, column_name, threshold=0.7)[
+        column_name
+    ].dtype
 
 
 @pytest.mark.parametrize("column_name", DATETIME_COLUMNS)

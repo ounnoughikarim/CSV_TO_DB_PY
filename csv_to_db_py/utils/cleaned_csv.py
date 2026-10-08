@@ -1,7 +1,6 @@
 from collections import Counter
 import polars as pl
 import re
-from csv_to_db_py.config import config
 from csv_to_db_py.config import PG_RESERVED
 from csv_to_db_py.logger import logger
 
@@ -37,7 +36,7 @@ def normalize_column(name: str) -> str:
     return name
 
 
-def get_dataframe_cleaned_new(file_path):
+def get_dataframe_cleaned_new(file_path, delimiter=None):
     # --- 1) Lecture du fichier selon l'extension ---
     if file_path.endswith(".xlsx"):
         print(f"Lecture Excel : {file_path}")
@@ -46,8 +45,6 @@ def get_dataframe_cleaned_new(file_path):
     elif file_path.endswith(".csv"):
         print(f"Lecture CSV : {file_path}")
 
-        # Utiliser le délimiteur du config si dispo, sinon détecter
-        delimiter = config.get("delimiter")
         if delimiter is None:
             delimiter = detect_delimiter(file_path)
         print(f"Délimiteur utilisé pour {file_path}: '{delimiter}'")

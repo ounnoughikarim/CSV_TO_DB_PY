@@ -1,7 +1,6 @@
 import polars as pl
 from sqlalchemy import inspect, text
 from csv_to_db_py.logger import logger
-from csv_to_db_py.config import config
 from csv_to_db_py.utils.cleaned_csv import quote_identifier
 
 
@@ -46,7 +45,7 @@ def map_polars_dtype_to_postgresql(series):
         return "VARCHAR"
 
 
-def detect_and_parse_datetime_column(dataframe, column_name):
+def detect_and_parse_datetime_column(dataframe, column_name, threshold=1.0):
     """
     Détecte automatiquement si une colonne string contient des dates et trouve le format approprié.
     Utilise l'inférence automatique de Polars qui supporte de nombreux formats.
@@ -75,7 +74,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
         return dataframe
 
     # Seuil configurable pour la détection de dates (défaut: 1.0 = 100%, désactivé)
-    MIN_SUCCESS_RATE = config.get("datetime_detection_threshold", 1.0)
+    MIN_SUCCESS_RATE = threshold
 
     # Try automatic datetime parsing with Polars (supports many formats automatically)
     try:
@@ -182,10 +181,12 @@ def detect_and_parse_datetime_column(dataframe, column_name):
     return dataframe
 
 
-def convert_datetime_columns(dataframe):
-    """Convert every string column that looks like a date, using the configured detection threshold."""
+def convert_datetime_columns(dataframe, threshold=1.0):
+    """Convert every string column that looks like a date, using the given detection threshold."""
     for column_name in dataframe.columns:
-        dataframe = detect_and_parse_datetime_column(dataframe, column_name)
+        dataframe = detect_and_parse_datetime_column(
+            dataframe, column_name, threshold=threshold
+        )
     return dataframe
 
 
@@ -222,12 +223,10 @@ def postgrestype_dict(dataframe, sample_size=10000):
     return column_types
 
 
-def overwrite_table_with_csv_data(engine, csv_data, table_name):
+def overwrite_table_with_csv_data(engine, csv_data, table_name, batch_size=10000):
     # Convert polars DataFrame to pandas for SQLAlchemy compatibility
     pandas_data = csv_data.to_pandas()
 
-    # Get batch size from config (default: 10000)
-    batch_size = config.get("batch_size", 10000)
     total_rows = len(pandas_data)
 
     # Typed table always pre-created (create_table_from_csv raises on failure); to_sql only appends.
