@@ -1,5 +1,6 @@
 mainConfig.json
 mainConfig.*.json
+.coverage
 
 # Python
 __pycache__/
