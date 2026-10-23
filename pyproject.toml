@@ -15,7 +15,6 @@ packages = [
 license = {text = "MIT"}
 requires-python = ">=3.13"
 dependencies = [
-    "requests (>=2.32.5,<3.0.0)",
     "polars>=1.20.0",
     "pandas (>=2.3.2,<3.0.0)",
     "psycopg2 (>=2.9.10,<3.0.0)",
@@ -23,9 +22,7 @@ dependencies = [
     "pyodbc (>=5.0.0,<6.0.0)",
     "oracledb (>=2.0.0,<3.0.0)",
     "sqlalchemy (>=2.0.43,<3.0.0)",
-    "openpyxl (>=3.1.5,<4.0.0)",
     "rich (>=14.1.0,<15.0.0)",
-    "pyarrow (>=18.0.0,<19.0.0)",
     "fastexcel>=0.20.2",
 ]
 
