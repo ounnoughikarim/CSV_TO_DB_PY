@@ -40,28 +40,30 @@ cd CSV_TO_DB_PY
 uv sync
 ```
 
-## Install from GitHub Packages
+## Install from PyPI
 
-The package is published to GitHub Packages and can be installed with:
+The package is published to PyPI and can be installed with:
 
 ```bash
-uv add csv-to-db-py --index-url https://pypi.github.com/xgaia/
+uv add csv-to-db-py
 ```
 
 or with pip:
 
 ```bash
-pip install csv-to-db-py --index-url https://pypi.github.com/xgaia/
+pip install csv-to-db-py
 ```
 
 ## Publishing
 
-To publish a new release to GitHub Packages:
+To publish a new release to PyPI, push a tag matching the version in `pyproject.toml`:
 
 ```bash
-uv build
-UV_PUBLISH_TOKEN=<PAT> uv publish
+git tag 0.1.0
+git push origin 0.1.0
 ```
+
+The `publish` GitHub Actions workflow builds the package and publishes it to PyPI via trusted publishing.
 
 ## Configuration
 

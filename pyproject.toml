@@ -43,9 +43,6 @@ dev = [
     "pytest>=8.0.0",
 ]
 
-[tool.uv]
-publish-url = "https://pypi.github.com/xgaia/"
-
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore:Detected the pattern `.%f` in the chrono format string:",
