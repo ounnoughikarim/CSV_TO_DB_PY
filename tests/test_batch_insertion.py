@@ -1,54 +1,34 @@
-"""
-Test de l'insertion par batch.
-
-Ce script teste que la fonction overwrite_table_with_csv_data
-fonctionne correctement avec différentes tailles de données.
-"""
-
-import sys
-import os
-
-# Ajouter le répertoire parent au path pour importer les modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import pytest
 
 
-def test_batch_logic():
-    """Test la logique de calcul des batchs."""
+def num_batches(total_rows, batch_size):
+    return (total_rows + batch_size - 1) // batch_size
 
-    print("TEST DE LA LOGIQUE DE BATCH")
-    print("=" * 80)
 
-    test_cases = [
-        (50, 100000, "Petit dataset (< batch_size)"),
-        (100000, 100000, "Exactement batch_size"),
-        (150000, 100000, "1.5x batch_size"),
-        (250000, 100000, "2.5x batch_size"),
-        (1000000, 100000, "1 million de lignes"),
-        (1000000, 50000, "1 million de lignes, batch 50k"),
+def batch_end_index(start_idx, batch_size, total_rows):
+    return min(start_idx + batch_size, total_rows)
+
+
+@pytest.mark.parametrize(
+    "total_rows,batch_size,expected",
+    [
+        (50, 100000, 1),
+        (150000, 100000, 2),
+        (250000, 100000, 3),
+        (100000, 100000, 1),
+    ],
+)
+def test_number_of_batches(total_rows, batch_size, expected):
+    assert num_batches(total_rows, batch_size) == expected
+
+
+def test_batch_slicing_bounds():
+    total_rows, batch_size = 250000, 100000
+    batches = [
+        (i, batch_end_index(i, batch_size, total_rows))
+        for i in range(0, total_rows, batch_size)
     ]
-
-    for total_rows, batch_size, description in test_cases:
-        num_batches = (total_rows + batch_size - 1) // batch_size
-        print(f"\n{description}:")
-        print(f"  Total lignes: {total_rows:,}")
-        print(f"  Taille batch: {batch_size:,}")
-        print(f"  Nombre de batchs: {num_batches}")
-
-        if total_rows <= batch_size:
-            print("  > Insertion unique (pas de batch)")
-        else:
-            print(f"  > {num_batches} batch(s) necessaire(s)")
-            for i in range(0, total_rows, batch_size):
-                batch_num = (i // batch_size) + 1
-                end_idx = min(i + batch_size, total_rows)
-                batch_rows = end_idx - i
-                print(
-                    f"     Batch {batch_num}: lignes {i + 1:,} à {end_idx:,} ({batch_rows:,} lignes)"
-                )
-
-    print("\n" + "=" * 80)
-    print("Test terminé!")
-
-
-if __name__ == "__main__":
-    test_batch_logic()
+    assert batches == [(0, 100000), (100000, 200000), (200000, 250000)]
+    assert batches[0][0] == 0
+    assert batches[-1][1] == total_rows
+    assert sum(end - start for start, end in batches) == total_rows
