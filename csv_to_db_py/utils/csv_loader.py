@@ -1,15 +1,18 @@
 import polars as pl
-from sqlalchemy import inspect, text
+from sqlalchemy import Float, text
 from csv_to_db_py.logger import logger
-from csv_to_db_py.utils.cleaned_csv import quote_identifier
+from csv_to_db_py.utils.cleaned_csv import (
+    dialect_name,
+    existing_columns,
+    quote_identifier,
+)
 
 
 def _truncate_if_exists(engine, table_name, expected_columns):
     """TRUNCATE if table exists → preserve schema & dependent views. Returns True if truncated."""
-    inspector = inspect(engine)
-    if not inspector.has_table(table_name):
+    db_columns = existing_columns(engine, table_name)
+    if db_columns is None:
         return False
-    db_columns = [column["name"] for column in inspector.get_columns(table_name)]
     if sorted(db_columns) != sorted(expected_columns):
         # ponytail: column-name drift is guarded; TYPE drift is not (still fails loudly after truncate)
         raise ValueError(
@@ -18,31 +21,63 @@ def _truncate_if_exists(engine, table_name, expected_columns):
             "DROP TABLE ... CASCADE and recreate dependent views, or align the CSV columns."
         )
     with engine.begin() as conn:
-        conn.execute(text(f"TRUNCATE TABLE {quote_identifier(table_name)}"))
+        conn.execute(
+            text(f"TRUNCATE TABLE {quote_identifier(table_name, dialect_name(engine))}")
+        )
     return True
 
 
-def map_polars_dtype_to_postgresql(series):
-    dtype = series.dtype
-    dtype_str = str(dtype)
+TYPE_MAP = {
+    "postgres": {
+        "int": "INTEGER",
+        "float": "FLOAT",
+        "bool": "BOOLEAN",
+        "datetime": "TIMESTAMP",
+        "str": "TEXT",
+    },
+    "mysql": {
+        "int": "INTEGER",
+        "float": "DOUBLE",
+        "bool": "BOOLEAN",
+        "datetime": "DATETIME",
+        "str": "TEXT",
+    },
+    "mssql": {
+        "int": "INTEGER",
+        "float": "FLOAT",
+        "bool": "BIT",
+        "datetime": "DATETIME2",
+        "str": "NVARCHAR(MAX)",
+    },
+    "oracle": {
+        "int": "INTEGER",
+        "float": "FLOAT",
+        "bool": "NUMBER(1)",
+        "datetime": "TIMESTAMP",
+        "str": "VARCHAR2(4000)",
+    },
+}
 
-    if "Int" in dtype_str:
-        return "INTEGER"
-    elif "Float" in dtype_str:
+
+def map_dtype_to_sql(series, dialect="postgres"):
+    types = TYPE_MAP.get(dialect, TYPE_MAP["postgres"])
+    dtype = str(series.dtype)
+
+    if "Int" in dtype or "UInt" in dtype:
+        return types["int"]
+    elif "Float" in dtype:
         # Check if all non-null values are integers
         non_null = series.drop_nulls()
         if len(non_null) > 0 and (non_null == non_null.cast(pl.Int64)).all():
-            return "INTEGER"
+            return types["int"]
         else:
-            return "FLOAT"
-    elif "Boolean" in dtype_str or "Bool" in dtype_str:
-        return "BOOLEAN"
-    elif "Datetime" in dtype_str or "Date" in dtype_str:
-        return "TIMESTAMP"
-    elif "Utf8" in dtype_str or "String" in dtype_str:
-        return "VARCHAR"
+            return types["float"]
+    elif "Boolean" in dtype or "Bool" in dtype:
+        return types["bool"]
+    elif "Datetime" in dtype or "Date" in dtype:
+        return types["datetime"]
     else:
-        return "VARCHAR"
+        return types["str"]
 
 
 def detect_and_parse_datetime_column(dataframe, column_name, threshold=1.0):
@@ -190,17 +225,18 @@ def convert_datetime_columns(dataframe, threshold=1.0):
     return dataframe
 
 
-def postgrestype_dict(dataframe, sample_size=10000):
+def postgrestype_dict(dataframe, dialect="postgres", sample_size=10000):
     """
-    Détermine les types PostgreSQL pour chaque colonne du DataFrame.
+    Détermine les types SQL pour chaque colonne du DataFrame, selon le dialecte cible.
 
     Args:
         dataframe: DataFrame Polars
+        dialect: nom du dialecte SQLAlchemy (postgres, mysql, mssql, oracle)
         sample_size: Taille maximale de l'échantillon pour l'analyse des types.
                      Si le DataFrame est plus grand, un échantillon aléatoire est utilisé.
 
     Returns:
-        dict: Mapping {nom_colonne: type_postgresql}
+        dict: Mapping {nom_colonne: type_sql}
     """
     column_types = {}
 
@@ -216,9 +252,7 @@ def postgrestype_dict(dataframe, sample_size=10000):
         df_sample = dataframe
 
     for column_name in df_sample.columns:
-        column_types[column_name] = map_polars_dtype_to_postgresql(
-            df_sample[column_name]
-        )
+        column_types[column_name] = map_dtype_to_sql(df_sample[column_name], dialect)
 
     return column_types
 
@@ -227,13 +261,28 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name, batch_size=10000
     # Convert polars DataFrame to pandas for SQLAlchemy compatibility
     pandas_data = csv_data.to_pandas()
 
+    insert_dtype = None
+    if dialect_name(engine) == "oracle":
+        # Oracle has no boolean type (stored as NUMBER(1)) and rejects pandas' Float(precision=53)
+        for column in pandas_data.select_dtypes(include="bool").columns:
+            pandas_data[column] = pandas_data[column].astype(int)
+        float_columns = pandas_data.select_dtypes(include="float").columns
+        if len(float_columns):
+            insert_dtype = {column: Float() for column in float_columns}
+
     total_rows = len(pandas_data)
 
     # Typed table always pre-created (create_table_from_csv raises on failure); to_sql only appends.
     truncated = _truncate_if_exists(engine, table_name, csv_data.columns)
 
     if total_rows <= batch_size:
-        pandas_data.to_sql(name=table_name, con=engine, if_exists="append", index=False)
+        pandas_data.to_sql(
+            name=table_name,
+            con=engine,
+            if_exists="append",
+            index=False,
+            dtype=insert_dtype,
+        )
         logger.info(
             f"Table '{table_name}' {'vidée puis remplie' if truncated else 'créée'} "
             f"avec {total_rows} lignes (insertion unique)"
@@ -252,7 +301,11 @@ def overwrite_table_with_csv_data(engine, csv_data, table_name, batch_size=10000
             batch_data = pandas_data.iloc[i:end_idx]
 
             batch_data.to_sql(
-                name=table_name, con=engine, if_exists="append", index=False
+                name=table_name,
+                con=engine,
+                if_exists="append",
+                index=False,
+                dtype=insert_dtype,
             )
 
             logger.info(

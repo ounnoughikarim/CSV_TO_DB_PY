@@ -1,11 +1,25 @@
 # CSV to DB
 
-Convert table files or folders to PostgreSQL database tables.The database need to already exists. It have a feature of autodection of types.
+Load table files or folders into a PostgreSQL, MySQL, SQL Server or Oracle database table. The database must already exist. It detects column types automatically.
  -dates (multiples formats cited on tests parts)
  -int
  -float
  -string 
  
+### Supported databases
+
+`DATABASE_CONFIG.type` selects the dialect, and the generated SQL (identifier quoting, types, DDL) adapts to it:
+
+| polars type | postgres | mysql | mssql | oracle |
+|-------------|----------|-------|-------|--------|
+| Int | INTEGER | INTEGER | INTEGER | INTEGER |
+| Float | FLOAT | DOUBLE | FLOAT | FLOAT |
+| Bool | BOOLEAN | BOOLEAN | BIT | NUMBER(1) |
+| Datetime | TIMESTAMP | DATETIME | DATETIME2 | TIMESTAMP |
+| String | TEXT | TEXT | NVARCHAR(MAX) | VARCHAR2(4000) |
+
+For Oracle, the `database` field is the **service name** (e.g. `FREEPDB1`), not a SID.
+
 
 ## Prerequisites
 

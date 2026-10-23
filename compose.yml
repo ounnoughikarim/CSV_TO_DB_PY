@@ -8,4 +8,42 @@ services:
       POSTGRES_USER: tsf
       POSTGRES_DB: tsf
     volumes:
-      - ~/docker-data/CSV_TO_DB_PY/postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+  mysql:
+    image: mysql:8.4
+    ports:
+      - 53306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: tsf
+      MYSQL_USER: tsf
+      MYSQL_PASSWORD: tsf
+      MYSQL_DATABASE: tsf
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - 51433:1433
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: "Tsf_Strong123!"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    ports:
+      - 51521:1521
+    environment:
+      ORACLE_PASSWORD: tsf
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+
+volumes:
+  postgres_data:
+  mysql_data:
+  mssql_data:
+  oracle_data:

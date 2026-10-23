@@ -73,7 +73,7 @@ def load_csv_to_db(config: dict, input_path: str | None = None) -> None:
         df = convert_datetime_columns(
             df, threshold=config.get("datetime_detection_threshold", 1.0)
         )
-        types_dict = postgrestype_dict(df)
+        types_dict = postgrestype_dict(df, dialect=engine.dialect.name)
         print(types_dict)
 
         if isUniqueFile:

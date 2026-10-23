@@ -1,6 +1,8 @@
 from collections import Counter
 import polars as pl
 import re
+from sqlalchemy import MetaData, Table
+from sqlalchemy.exc import NoSuchTableError
 from csv_to_db_py.config import PG_RESERVED
 from csv_to_db_py.logger import logger
 
@@ -17,7 +19,27 @@ def detect_delimiter(file_path):
     return delimiter
 
 
-def quote_identifier(name: str) -> str:
+def dialect_name(engine) -> str:
+    dialect = getattr(engine, "dialect", None)
+    return getattr(dialect, "name", "postgres")
+
+
+def existing_columns(engine, table_name) -> list[str] | None:
+    """Reflected column names of an existing table, or None if it does not exist.
+
+    Reflects with quote=True so quoted lower/mixed-case names (e.g. Oracle) are found;
+    SQLAlchemy's has_table denormalizes names and misses them.
+    """
+    try:
+        table = Table(table_name, MetaData(), autoload_with=engine, quote=True)
+    except NoSuchTableError:
+        return None
+    return [column.name for column in table.columns]
+
+
+def quote_identifier(name: str, dialect: str = "postgres") -> str:
+    if dialect == "mysql":
+        return "`" + name.replace("`", "``") + "`"
     return '"' + name.replace('"', '""') + '"'
 
 

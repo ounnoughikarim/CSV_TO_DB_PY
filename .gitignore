@@ -1,4 +1,5 @@
 mainConfig.json
+mainConfig.*.json
 
 # Python
 __pycache__/
