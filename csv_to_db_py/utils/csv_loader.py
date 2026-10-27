@@ -1,63 +1,93 @@
 import polars as pl
-import psycopg2
-from sqlalchemy import inspect, text
-from logger import logger
-from csv_to_db_py.config import config
+from sqlalchemy import Float, text
+from csv_to_db_py.logger import logger
+from csv_to_db_py.utils.cleaned_csv import (
+    dialect_name,
+    existing_columns,
+    quote_identifier,
+)
 
 
-def _truncate_if_exists(engine, table_name):
+def _truncate_if_exists(engine, table_name, expected_columns):
     """TRUNCATE if table exists → preserve schema & dependent views. Returns True if truncated."""
-    if inspect(engine).has_table(table_name):
-        with engine.begin() as conn:
-            conn.execute(text(f'TRUNCATE TABLE "{table_name}"'))
-        return True
-    return False
+    db_columns = existing_columns(engine, table_name)
+    if db_columns is None:
+        return False
+    if sorted(db_columns) != sorted(expected_columns):
+        # ponytail: column-name drift is guarded; TYPE drift is not (still fails loudly after truncate)
+        raise ValueError(
+            f"Schema drift on table {table_name!r}: existing columns {sorted(db_columns)} "
+            f"differ from CSV columns {sorted(expected_columns)}. "
+            "DROP TABLE ... CASCADE and recreate dependent views, or align the CSV columns."
+        )
+    with engine.begin() as conn:
+        conn.execute(
+            text(f"TRUNCATE TABLE {quote_identifier(table_name, dialect_name(engine))}")
+        )
+    return True
 
 
-def polars_type_to_sql(dtype):
-    dtype_str = str(dtype)
-    if "Int" in dtype_str:
-        return "INTEGER"
-    if "Float" in dtype_str:
-        return "FLOAT"
-    if "Boolean" in dtype_str or "Bool" in dtype_str:
-        return "BOOLEAN"
-    if "Datetime" in dtype_str or "Date" in dtype_str:
-        return "TIMESTAMP"
-    return "TEXT"
+TYPE_MAP = {
+    "postgres": {
+        "int": "INTEGER",
+        "float": "FLOAT",
+        "bool": "BOOLEAN",
+        "datetime": "TIMESTAMP",
+        "str": "TEXT",
+    },
+    "mysql": {
+        "int": "INTEGER",
+        "float": "DOUBLE",
+        "bool": "BOOLEAN",
+        "datetime": "DATETIME",
+        "str": "TEXT",
+    },
+    "mssql": {
+        "int": "INTEGER",
+        "float": "FLOAT",
+        "bool": "BIT",
+        "datetime": "DATETIME2",
+        "str": "NVARCHAR(MAX)",
+    },
+    "oracle": {
+        "int": "INTEGER",
+        "float": "FLOAT",
+        "bool": "NUMBER(1)",
+        "datetime": "TIMESTAMP",
+        "str": "VARCHAR2(4000)",
+    },
+}
 
 
-def map_polars_dtype_to_postgresql(series):
-    dtype = series.dtype
-    dtype_str = str(dtype)
+def map_dtype_to_sql(series, dialect="postgres"):
+    types = TYPE_MAP.get(dialect, TYPE_MAP["postgres"])
+    dtype = str(series.dtype)
 
-    if "Int" in dtype_str:
-        return "INTEGER"
-    elif "Float" in dtype_str:
+    if "Int" in dtype or "UInt" in dtype:
+        return types["int"]
+    elif "Float" in dtype:
         # Check if all non-null values are integers
         non_null = series.drop_nulls()
         if len(non_null) > 0 and (non_null == non_null.cast(pl.Int64)).all():
-            return "INTEGER"
+            return types["int"]
         else:
-            return "FLOAT"
-    elif "Boolean" in dtype_str or "Bool" in dtype_str:
-        return "BOOLEAN"
-    elif "Datetime" in dtype_str or "Date" in dtype_str:
-        return "TIMESTAMP"
-    elif "Utf8" in dtype_str or "String" in dtype_str:
-        return "VARCHAR"
+            return types["float"]
+    elif "Boolean" in dtype or "Bool" in dtype:
+        return types["bool"]
+    elif "Datetime" in dtype or "Date" in dtype:
+        return types["datetime"]
     else:
-        return "VARCHAR"
+        return types["str"]
 
 
-def detect_and_parse_datetime_column(dataframe, column_name):
+def detect_and_parse_datetime_column(dataframe, column_name, threshold=1.0):
     """
     Détecte automatiquement si une colonne string contient des dates et trouve le format approprié.
     Utilise l'inférence automatique de Polars qui supporte de nombreux formats.
 
     Logique de validation:
     - Filtre les nulls et chaînes vides (valeurs non significatives pour l'analyse)
-    - Parmi les valeurs "utiles" restantes, au moins 90% doivent être des dates valides
+    - Parmi les valeurs "utiles" restantes, au moins `datetime_detection_threshold` doivent être des dates valides
     - Les valeurs invalides sont converties en null automatiquement (strict=False)
     - Préserve tous les nulls et chaînes vides originaux
     """
@@ -79,7 +109,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
         return dataframe
 
     # Seuil configurable pour la détection de dates (défaut: 1.0 = 100%, désactivé)
-    MIN_SUCCESS_RATE = config.get("datetime_detection_threshold", 1.0)
+    MIN_SUCCESS_RATE = threshold
 
     # Try automatic datetime parsing with Polars (supports many formats automatically)
     try:
@@ -97,7 +127,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
         # Pour cela, on regarde la colonne parsée aux mêmes positions que les valeurs utiles
         original_indices = (
             column.to_frame()
-            .with_row_count("idx")
+            .with_row_index("idx")
             .filter((column.is_not_null()) & (column.str.strip_chars() != ""))["idx"]
         )
 
@@ -107,7 +137,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
 
         success_rate = num_parsed / num_useful
 
-        # Si au moins 90% des valeurs utiles sont parsées comme dates, on convertit
+        # Si au moins la part configurée des valeurs utiles est parsée, on convertit
         if success_rate >= MIN_SUCCESS_RATE:
             num_invalid = num_useful - num_parsed
             logger.info(
@@ -158,7 +188,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
             parsed_col = parsed[column_name]
             original_indices = (
                 column.to_frame()
-                .with_row_count("idx")
+                .with_row_index("idx")
                 .filter((column.is_not_null()) & (column.str.strip_chars() != ""))[
                     "idx"
                 ]
@@ -169,7 +199,7 @@ def detect_and_parse_datetime_column(dataframe, column_name):
             num_parsed = len(parsed_useful)
             success_rate = num_parsed / num_useful
 
-            # Si au moins 90% des valeurs utiles sont parsées, on accepte
+            # Si au moins la part configurée des valeurs utiles est parsée, on accepte
             if success_rate >= MIN_SUCCESS_RATE:
                 num_invalid = num_useful - num_parsed
                 logger.info(
@@ -178,7 +208,8 @@ def detect_and_parse_datetime_column(dataframe, column_name):
                     f"{num_invalid} valeur(s) invalide(s) convertie(s) en null"
                 )
                 return parsed
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Échec détection datetime (format {date_format}) pour '{column_name}': {e}")
             continue
 
     # If no format worked, return original dataframe
@@ -186,17 +217,27 @@ def detect_and_parse_datetime_column(dataframe, column_name):
     return dataframe
 
 
-def postgrestype_dict(dataframe, sample_size=10000):
+def convert_datetime_columns(dataframe, threshold=1.0):
+    """Convert every string column that looks like a date, using the given detection threshold."""
+    for column_name in dataframe.columns:
+        dataframe = detect_and_parse_datetime_column(
+            dataframe, column_name, threshold=threshold
+        )
+    return dataframe
+
+
+def postgrestype_dict(dataframe, dialect="postgres", sample_size=10000):
     """
-    Détermine les types PostgreSQL pour chaque colonne du DataFrame.
+    Détermine les types SQL pour chaque colonne du DataFrame, selon le dialecte cible.
 
     Args:
         dataframe: DataFrame Polars
+        dialect: nom du dialecte SQLAlchemy (postgres, mysql, mssql, oracle)
         sample_size: Taille maximale de l'échantillon pour l'analyse des types.
                      Si le DataFrame est plus grand, un échantillon aléatoire est utilisé.
 
     Returns:
-        dict: Mapping {nom_colonne: type_postgresql}
+        dict: Mapping {nom_colonne: type_sql}
     """
     column_types = {}
 
@@ -211,70 +252,68 @@ def postgrestype_dict(dataframe, sample_size=10000):
     else:
         df_sample = dataframe
 
-    # First pass: detect and convert datetime columns on the sample
     for column_name in df_sample.columns:
-        df_sample = detect_and_parse_datetime_column(df_sample, column_name)
-
-    # Second pass: map types to PostgreSQL
-    for column_name in df_sample.columns:
-        column_types[column_name] = map_polars_dtype_to_postgresql(
-            df_sample[column_name]
-        )
+        column_types[column_name] = map_dtype_to_sql(df_sample[column_name], dialect)
 
     return column_types
 
 
-def overwrite_table_with_csv_data(engine, csv_data, table_name):
-    try:
-        # Convert polars DataFrame to pandas for SQLAlchemy compatibility
-        pandas_data = csv_data.to_pandas()
+def overwrite_table_with_csv_data(engine, csv_data, table_name, batch_size=10000):
+    # Convert polars DataFrame to pandas for SQLAlchemy compatibility
+    pandas_data = csv_data.to_pandas()
 
-        # Get batch size from config (default: 10000)
-        batch_size = config.get("batch_size", 10000)
-        total_rows = len(pandas_data)
+    insert_dtype = None
+    if dialect_name(engine) == "oracle":
+        # Oracle has no boolean type (stored as NUMBER(1)) and rejects pandas' Float(precision=53)
+        for column in pandas_data.select_dtypes(include="bool").columns:
+            pandas_data[column] = pandas_data[column].astype(int)
+        float_columns = pandas_data.select_dtypes(include="float").columns
+        if len(float_columns):
+            insert_dtype = {column: Float() for column in float_columns}
 
-        # TRUNCATE if exists → preserve schema + dependent views. Else to_sql creates table.
-        truncated = _truncate_if_exists(engine, table_name)
+    total_rows = len(pandas_data)
 
-        if total_rows <= batch_size:
-            pandas_data.to_sql(
-                name=table_name, con=engine, if_exists="append", index=False
-            )
-            logger.info(
-                f"Table '{table_name}' {'vidée puis remplie' if truncated else 'créée'} "
-                f"avec {total_rows} lignes (insertion unique)"
-            )
-        else:
-            # Multi-batch insertion
-            num_batches = (
-                total_rows + batch_size - 1
-            ) // batch_size  # Ceiling division
-            logger.info(
-                f"Insertion de {total_rows} lignes dans '{table_name}' par batch de {batch_size} "
-                f"({num_batches} batch(s))"
-            )
+    # Typed table always pre-created (create_table_from_csv raises on failure); to_sql only appends.
+    truncated = _truncate_if_exists(engine, table_name, csv_data.columns)
 
-            for i in range(0, total_rows, batch_size):
-                batch_num = (i // batch_size) + 1
-                end_idx = min(i + batch_size, total_rows)
-                batch_data = pandas_data.iloc[i:end_idx]
-
-                batch_data.to_sql(
-                    name=table_name, con=engine, if_exists="append", index=False
-                )
-
-                logger.info(
-                    f"  Batch {batch_num}/{num_batches}: {len(batch_data)} lignes insérées "
-                    f"(lignes {i + 1} à {end_idx})"
-                )
-
-            logger.info(
-                f"Insertion terminée: {total_rows} lignes insérées dans '{table_name}'"
-            )
-
-    except psycopg2.Error as e:
-        logger.error(
-            f"Erreur lors de l'écriture des données dans la table '{table_name}': {e}"
+    if total_rows <= batch_size:
+        pandas_data.to_sql(
+            name=table_name,
+            con=engine,
+            if_exists="append",
+            index=False,
+            dtype=insert_dtype,
         )
-    except Exception as e:
-        logger.error(f"Erreur inattendue lors de l'écriture dans '{table_name}': {e}")
+        logger.info(
+            f"Table '{table_name}' {'vidée puis remplie' if truncated else 'créée'} "
+            f"avec {total_rows} lignes (insertion unique)"
+        )
+    else:
+        # Multi-batch insertion
+        num_batches = (total_rows + batch_size - 1) // batch_size  # Ceiling division
+        logger.info(
+            f"Insertion de {total_rows} lignes dans '{table_name}' par batch de {batch_size} "
+            f"({num_batches} batch(s))"
+        )
+
+        for i in range(0, total_rows, batch_size):
+            batch_num = (i // batch_size) + 1
+            end_idx = min(i + batch_size, total_rows)
+            batch_data = pandas_data.iloc[i:end_idx]
+
+            batch_data.to_sql(
+                name=table_name,
+                con=engine,
+                if_exists="append",
+                index=False,
+                dtype=insert_dtype,
+            )
+
+            logger.info(
+                f"  Batch {batch_num}/{num_batches}: {len(batch_data)} lignes insérées "
+                f"(lignes {i + 1} à {end_idx})"
+            )
+
+        logger.info(
+            f"Insertion terminée: {total_rows} lignes insérées dans '{table_name}'"
+        )

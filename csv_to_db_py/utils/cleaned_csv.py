@@ -1,8 +1,10 @@
 from collections import Counter
 import polars as pl
 import re
-from csv_to_db_py.config import config
+from sqlalchemy import MetaData, Table
+from sqlalchemy.exc import NoSuchTableError
 from csv_to_db_py.config import PG_RESERVED
+from csv_to_db_py.logger import logger
 
 import csv
 
@@ -15,6 +17,30 @@ def detect_delimiter(file_path):
         except Exception:
             delimiter = ";"  # fallback si détection impossible : tu peux mettre "," si tu préfères
     return delimiter
+
+
+def dialect_name(engine) -> str:
+    dialect = getattr(engine, "dialect", None)
+    return getattr(dialect, "name", "postgres")
+
+
+def existing_columns(engine, table_name) -> list[str] | None:
+    """Reflected column names of an existing table, or None if it does not exist.
+
+    Reflects with quote=True so quoted lower/mixed-case names (e.g. Oracle) are found;
+    SQLAlchemy's has_table denormalizes names and misses them.
+    """
+    try:
+        table = Table(table_name, MetaData(), autoload_with=engine, quote=True)
+    except NoSuchTableError:
+        return None
+    return [column.name for column in table.columns]
+
+
+def quote_identifier(name: str, dialect: str = "postgres") -> str:
+    if dialect == "mysql":
+        return "`" + name.replace("`", "``") + "`"
+    return '"' + name.replace('"', '""') + '"'
 
 
 def normalize_column(name: str) -> str:
@@ -32,7 +58,7 @@ def normalize_column(name: str) -> str:
     return name
 
 
-def get_dataframe_cleaned_new(file_path):
+def get_dataframe_cleaned_new(file_path, delimiter=None):
     # --- 1) Lecture du fichier selon l'extension ---
     if file_path.endswith(".xlsx"):
         print(f"Lecture Excel : {file_path}")
@@ -41,8 +67,8 @@ def get_dataframe_cleaned_new(file_path):
     elif file_path.endswith(".csv"):
         print(f"Lecture CSV : {file_path}")
 
-        # Utiliser le délimiteur du config si dispo, sinon détecter
-        delimiter = config.get("delimiter", detect_delimiter(file_path))
+        if delimiter is None:
+            delimiter = detect_delimiter(file_path)
         print(f"Délimiteur utilisé pour {file_path}: '{delimiter}'")
 
         # Essayer UTF-8, sinon fallback Latin-1
@@ -64,6 +90,28 @@ def get_dataframe_cleaned_new(file_path):
 
     print(df)
     return df
+
+
+def apply_filter(df: pl.DataFrame, filter_config: dict) -> pl.DataFrame:
+    filter_col = filter_config.get("column")
+    filter_val = filter_config.get("value")
+    if not filter_col or filter_val is None:
+        return df
+    normalized_col = normalize_column(filter_col)
+    if normalized_col not in df.columns:
+        logger.warning(
+            f"Filtre ignoré : colonne '{filter_col}' absente après normalisation."
+        )
+        return df
+    col = df[normalized_col]
+    try:
+        cast_val = pl.lit(filter_val).cast(col.dtype)
+        return df.filter(col == cast_val)
+    except Exception:
+        logger.warning(
+            f"Filtre ignoré : valeur '{filter_val}' non convertible pour la colonne '{filter_col}'."
+        )
+        return df
 
 
 def normalize_and_dedup_columns(columns):
