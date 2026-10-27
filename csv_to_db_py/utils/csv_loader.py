@@ -127,7 +127,7 @@ def detect_and_parse_datetime_column(dataframe, column_name, threshold=1.0):
         # Pour cela, on regarde la colonne parsée aux mêmes positions que les valeurs utiles
         original_indices = (
             column.to_frame()
-            .with_row_count("idx")
+            .with_row_index("idx")
             .filter((column.is_not_null()) & (column.str.strip_chars() != ""))["idx"]
         )
 
@@ -188,7 +188,7 @@ def detect_and_parse_datetime_column(dataframe, column_name, threshold=1.0):
             parsed_col = parsed[column_name]
             original_indices = (
                 column.to_frame()
-                .with_row_count("idx")
+                .with_row_index("idx")
                 .filter((column.is_not_null()) & (column.str.strip_chars() != ""))[
                     "idx"
                 ]
@@ -208,7 +208,8 @@ def detect_and_parse_datetime_column(dataframe, column_name, threshold=1.0):
                     f"{num_invalid} valeur(s) invalide(s) convertie(s) en null"
                 )
                 return parsed
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Échec détection datetime (format {date_format}) pour '{column_name}': {e}")
             continue
 
     # If no format worked, return original dataframe

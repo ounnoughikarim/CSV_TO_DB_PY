@@ -15,7 +15,7 @@ packages = [
 license = {text = "MIT"}
 requires-python = ">=3.13"
 dependencies = [
-    "polars>=1.20.0",
+    "polars>=2.1.0,<3",
     "pandas (>=2.3.2,<3.0.0)",
     "psycopg2 (>=2.9.10,<3.0.0)",
     "pymysql (>=1.1.0,<2.0.0)",
