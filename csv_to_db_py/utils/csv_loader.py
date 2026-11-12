@@ -209,7 +209,9 @@ def detect_and_parse_datetime_column(dataframe, column_name, threshold=1.0):
                 )
                 return parsed
         except Exception as e:
-            logger.warning(f"Échec détection datetime (format {date_format}) pour '{column_name}': {e}")
+            logger.warning(
+                f"Échec détection datetime (format {date_format}) pour '{column_name}': {e}"
+            )
             continue
 
     # If no format worked, return original dataframe
