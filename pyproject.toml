@@ -1,6 +1,6 @@
 [project]
 name = "csv-to-db-py"
-version = "0.1.0"
+version = "0.2.0"
 description = "Convert CSV file or folder of CSV to DB with table filled with the CSV data"
 readme = "README.md"
 authors = [
