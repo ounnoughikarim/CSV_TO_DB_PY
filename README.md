@@ -1,11 +1,25 @@
 # CSV to DB
 
-Convert table files or folders to PostgreSQL database tables.The database need to already exists. It have a feature of autodection of types.
+Load table files or folders into a PostgreSQL, MySQL, SQL Server or Oracle database table. The database must already exist. It detects column types automatically.
  -dates (multiples formats cited on tests parts)
  -int
  -float
  -string 
  
+### Supported databases
+
+`DATABASE_CONFIG.type` selects the dialect, and the generated SQL (identifier quoting, types, DDL) adapts to it:
+
+| polars type | postgres | mysql | mssql | oracle |
+|-------------|----------|-------|-------|--------|
+| Int | INTEGER | INTEGER | INTEGER | INTEGER |
+| Float | FLOAT | DOUBLE | FLOAT | FLOAT |
+| Bool | BOOLEAN | BOOLEAN | BIT | NUMBER(1) |
+| Datetime | TIMESTAMP | DATETIME | DATETIME2 | TIMESTAMP |
+| String | TEXT | TEXT | NVARCHAR(MAX) | VARCHAR2(4000) |
+
+For Oracle, the `database` field is the **service name** (e.g. `FREEPDB1`), not a SID.
+
 
 ## Prerequisites
 
@@ -13,6 +27,8 @@ Convert table files or folders to PostgreSQL database tables.The database need t
 - UV (https://docs.astral.sh/uv/getting-started/installation/)
 - PostgreSQL database
 - files with CSV or XLSX format
+- MySQL/MSSQL/Oracle connections rely on bundled drivers: `pymysql`, `pyodbc`, `oracledb`
+- `pyodbc` additionally requires an ODBC driver; `oracledb` runs in thin mode (no Oracle client needed)
 
 
 
@@ -23,6 +39,31 @@ git clone https://github.com/ounnoughikarim/CSV_TO_DB_PY.git
 cd CSV_TO_DB_PY
 uv sync
 ```
+
+## Install from PyPI
+
+The package is published to PyPI and can be installed with:
+
+```bash
+uv add csv-to-db-py
+```
+
+or with pip:
+
+```bash
+pip install csv-to-db-py
+```
+
+## Publishing
+
+To publish a new release to PyPI, push a tag matching the version in `pyproject.toml`:
+
+```bash
+git tag 0.1.0
+git push origin 0.1.0
+```
+
+The `publish` GitHub Actions workflow builds the package and publishes it to PyPI via trusted publishing.
 
 ## Configuration
 
@@ -69,34 +110,34 @@ Create `mainConfig.json` from the template:
     - `0.9`: Allows up to 10% invalid date values
     - `0.7`: Allows up to 30% invalid date values (recommended for real-world data)
 - `batch_size`: *(optional)* Number of rows to insert per batch for large files
-  - Default: `100000` (100k rows per batch)
+  - Default: `10000` (10k rows per batch)
   - Reduces memory usage for large datasets
   - SQLAlchemy can struggle with very large files, batching prevents memory issues
   - **Recommended values:**
-    - `100000`: Default, good for most cases (files up to several GB)
+    - `100000`: Good for most cases (files up to several GB)
     - `50000`: For memory-constrained environments
-    - `10000`: For very limited memory or extremely wide tables (many columns)
+    - `10000`: Default (10k rows per batch), good balance of speed and memory
     - `500000`: For high-memory systems and faster insertions
 
 ## Usage
 
 ```bash
-uv run python csv_to_db_py/main.py
+uv run csv-to-db --config mainConfig.json
 ```
 
 With custom log level:
 ```bash
-uv run python csv_to_db_py/main.py --log-level info
+uv run csv-to-db --config mainConfig.json --log-level info
 ```
 
 ## Testing
 
-Test automatic datetime detection with various date formats:
+Run the test suite with pytest:
 ```bash
-uv run python tests/test_datetime_detection.py
+uv run pytest
 ```
 
-This test uses a sample CSV file ([tests/date_formats_test.csv](tests/date_formats_test.csv)) containing 14 columns:
+This suite tests automatic datetime detection with various date formats, using [tests/date_formats_test.csv](tests/date_formats_test.csv) containing 14 columns:
 
 **Date columns (should be detected as datetime):**
 - **FR_date**: French format (DD/MM/YYYY)
@@ -151,18 +192,18 @@ When a table already exists, the tool **does not DROP** it. Instead it runs `TRU
 
 **Behavior:**
 
-- Table exists → `TRUNCATE TABLE "<name>"` then `INSERT` (append mode).
-- Table does not exist → created automatically by `to_sql` with detected types.
+- Table does not exist → pre-created by `create_table_from_csv` with detected types.
+- Table exists → `TRUNCATE TABLE "<name>"` then `INSERT` (append mode). If the existing table's columns differ from the CSV (schema drift), the run aborts with a clear error **before truncating**, so the old data is preserved.
 
 **Caveat — schema drift:**
 
-- TRUNCATE keeps the **existing** column definitions. If the new CSV has different columns (added/removed/renamed) or incompatible types, the append will fail.
-- In that case you must manually `DROP TABLE ... CASCADE` (and recreate dependent views) or alter the table to match the new schema.
+- TRUNCATE keeps the **existing** column definitions. Column-name drift (added/removed/renamed columns) is detected and blocks the overwrite before any data is lost. Type drift is not detected and still fails loudly after truncate.
+- To load a CSV whose schema differs, manually `DROP TABLE ... CASCADE` (and recreate dependent views) or alter the table to match the new schema.
 
 **Performance tips:**
 - Larger batch sizes = faster insertion but more memory usage
 - Smaller batch sizes = slower but safer for limited memory
-- Default 100k is optimal for most use cases
+- Default 10k is optimal for most use cases
 
 ### Type Detection Optimization (Sampling)
 

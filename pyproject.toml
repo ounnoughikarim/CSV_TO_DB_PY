@@ -15,17 +15,21 @@ packages = [
 license = {text = "MIT"}
 requires-python = ">=3.13"
 dependencies = [
-    "requests (>=2.32.5,<3.0.0)",
-    "polars>=1.20.0",
+    "polars>=2.1.0,<3",
     "pandas (>=2.3.2,<3.0.0)",
     "psycopg2 (>=2.9.10,<3.0.0)",
+    "pymysql (>=1.1.0,<2.0.0)",
+    "pyodbc (>=5.0.0,<6.0.0)",
+    "oracledb (>=2.0.0,<3.0.0)",
     "sqlalchemy (>=2.0.43,<3.0.0)",
-    "openpyxl (>=3.1.5,<4.0.0)",
     "rich (>=14.1.0,<15.0.0)",
-    "pyarrow (>=18.0.0,<19.0.0)",
     "fastexcel>=0.20.2",
 ]
 
+
+[project.scripts]
+csv-to-db = "csv_to_db_py.main:main"
+release = "csv_to_db_py.release:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -33,6 +37,14 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "git-cliff>=2.14.2",
+    "pytest>=8.0.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.13.0",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:Detected the pattern `.%f` in the chrono format string:",
 ]
 

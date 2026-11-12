@@ -1,10 +1,27 @@
 import json
-import os
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(script_dir, "..", "mainConfig.json")
-with open(config_path, "r") as f:
-    config = json.load(f)
+SUPPORTED_DB_TYPES = {"postgres", "mysql", "mssql", "oracle"}
+
+
+def validate_config(cfg: dict) -> None:
+    db_config = cfg.get("DATABASE_CONFIG")
+    if not isinstance(db_config, dict):
+        raise ValueError("config 'DATABASE_CONFIG' must be a dict")
+    db_type = db_config.get("type")
+    if db_type not in SUPPORTED_DB_TYPES:
+        raise ValueError(
+            f"config 'DATABASE_CONFIG.type' must be one of {', '.join(sorted(SUPPORTED_DB_TYPES))}, got {db_type!r}"
+        )
+    if "files_dir" not in cfg:
+        raise ValueError("config is missing required key 'files_dir'")
+
+
+def load_config(config_path: str) -> dict:
+    with open(config_path, "r") as f:
+        cfg = json.load(f)
+    validate_config(cfg)
+    return cfg
+
 
 PG_RESERVED = {
     "insert",

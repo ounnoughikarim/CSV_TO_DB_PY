@@ -1,5 +1,5 @@
 from sqlalchemy import URL, create_engine
-from db_connectors.base import BaseDBConnector
+from csv_to_db_py.db_connectors.base import BaseDBConnector
 
 
 class PostgresConnector(BaseDBConnector):
